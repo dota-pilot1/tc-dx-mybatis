@@ -68,7 +68,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
     headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   };
-  const url = `${API_BASE}${path}`;
+  const url = `${getApiBase()}${path}`;
   const res =
     "__TAURI_INTERNALS__" in window
       ? await tauriFetch(url, request)

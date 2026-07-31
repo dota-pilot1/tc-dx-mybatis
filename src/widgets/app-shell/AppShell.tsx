@@ -6,6 +6,7 @@ import ProfilePage from "../profile/ProfilePage";
 import SettingsPage from "../settings/SettingsPage";
 import CommerceToolkitModule from "../commerce-toolkit/CommerceToolkitModule";
 import PrototypeModule from "../prototype/PrototypeModule";
+import PrototypeNoteModule from "../prototype-note/PrototypeNoteModule";
 import WindowControls from "../../shared/ui/WindowControls";
 import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 import { getRailTheme } from "../../shared/lib/rail-themes";
@@ -22,6 +23,10 @@ type ViewId = "home" | "profile" | "settings" | AppModuleId;
 
 function AppShell({ user, onUserUpdate, onLogout }: Props) {
   const [active, setActive] = useState<ViewId>("home");
+  const [prototypeNoteTargetId, setPrototypeNoteTargetId] = useState<
+    string | null
+  >(null);
+  const [prototypeNoteMenuKey, setPrototypeNoteMenuKey] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const moduleOrder = useAppSettingsStore((s) => s.moduleOrder);
@@ -43,6 +48,14 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
 
   const appUpdate = useAppUpdate();
   const appVersion = appUpdate.state.currentVersion;
+
+  function openView(id: ViewId) {
+    if (id === "prototype-note") {
+      setPrototypeNoteTargetId(null);
+      setPrototypeNoteMenuKey((key) => key + 1);
+    }
+    setActive(id);
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -79,7 +92,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
       >
         <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-[color-mix(in_srgb,var(--primary-foreground)_10%,transparent)]">
           <button
-            onClick={() => setActive("home")}
+            onClick={() => openView("home")}
             title="홈"
             className={
               "flex h-[44px] w-[44px] items-center justify-center text-[22px] shadow-sm transition-all duration-300 ease-in-out " +
@@ -98,7 +111,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             return (
               <button
                 key={module.id}
-                onClick={() => setActive(module.id)}
+                onClick={() => openView(module.id)}
                 title={module.label}
                 className={
                   "group relative flex h-[48px] w-[50px] flex-col items-center justify-center gap-0.5 transition-all duration-300 ease-in-out " +
@@ -261,7 +274,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <HomePage
             user={user}
             modules={visibleModules}
-            onOpen={(id) => setActive(id as ViewId)}
+            onOpen={(id) => openView(id as ViewId)}
           />
         ) : active === "profile" ? (
           <ProfilePage
@@ -273,11 +286,29 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
         ) : active === "settings" ? (
           <SettingsPage user={user} appUpdate={appUpdate} />
         ) : active === "prototype" ? (
-          <PrototypeModule />
+          <PrototypeModule
+            onOpenPrototypeNote={(prototypeId) => {
+              setPrototypeNoteTargetId(prototypeId);
+              setActive("prototype-note");
+            }}
+          />
+        ) : active === "prototype-note" ? (
+          <PrototypeNoteModule
+            key={
+              prototypeNoteTargetId
+                ? `linked-${prototypeNoteTargetId}`
+                : `menu-${prototypeNoteMenuKey}`
+            }
+            targetPrototypeId={prototypeNoteTargetId}
+            onOpenPrototype={() => {
+              setPrototypeNoteTargetId(null);
+              setActive("prototype");
+            }}
+          />
         ) : (
           <CommerceToolkitModule
             moduleId={active}
-            onOpen={(id) => setActive(id)}
+            onOpen={(id) => openView(id)}
           />
         )}
       </div>

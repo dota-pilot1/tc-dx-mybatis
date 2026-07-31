@@ -159,6 +159,24 @@
     content: "";
     @apply absolute left-[5px] top-[0.42em] h-2 w-1.5 rotate-45 border-b-2 border-r-2 border-brand-primary;
   }
+
+  .prototype-topic-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prototype-topic-resizer {
+    min-height: 100%;
+    width: 8px;
+  }
+}
+
+@media (min-width: 80rem) {
+  .prototype-topic-layout {
+    grid-template-columns: var(--prototype-topic-width, 280px) 8px minmax(
+        0,
+        1fr
+      );
+  }
 }
 
 /* FullCalendar는 런타임 DOM을 생성하므로 semantic CSS 변수로 직접 테마를 연결한다. */
