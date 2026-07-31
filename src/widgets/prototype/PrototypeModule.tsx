@@ -208,22 +208,28 @@ function PrototypeModule() {
       </PageHeader>
 
       <div className="relative flex min-h-0 flex-1 flex-col bg-surface-muted">
-        <section className="shrink-0 border-b border-surface-border-soft bg-surface-raised px-4 py-3">
-          <div className="flex min-h-11 items-center gap-3">
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
+        <section className="shrink-0 border-b border-surface-border-soft bg-surface-raised">
+          <div className="flex min-h-12 items-center justify-between gap-4 border-b border-surface-border-soft px-4">
+            <div className="flex min-w-0 items-center gap-2">
               <span className="grid size-8 place-items-center rounded-md border border-brand-border bg-brand-glass">
                 <GitBranch className="size-4 text-brand-primary" />
               </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.13em] text-brand-primary">
-                  Workspaces
-                </p>
-                <h1 className="truncate text-base font-black text-text-primary">
-                  설계 및 프로토타입 공간
-                </h1>
-              </div>
+              <h1 className="truncate text-base font-black text-text-primary">
+                설계 및 프로토타입 공간
+              </h1>
             </div>
+            <button
+              type="button"
+              onClick={() => setManagerOpen(true)}
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-brand-border bg-brand-glass px-3 text-sm font-black text-brand-primary hover:bg-surface-muted"
+              title="워크스페이스 관리"
+            >
+              <Settings2 className="size-4" />
+              관리
+            </button>
+          </div>
 
+          <div className="flex min-h-12 items-center gap-2 px-4 py-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
               {loadingWorkspaces ? (
                 <span className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-3 py-2 text-xs font-bold text-text-muted">
@@ -278,17 +284,7 @@ function PrototypeModule() {
             >
               <RefreshCw className="size-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => setManagerOpen(true)}
-              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-brand-border bg-brand-glass px-3 text-sm font-black text-brand-primary hover:bg-surface-muted"
-              title="워크스페이스 관리"
-            >
-              <Settings2 className="size-4" />
-              관리
-            </button>
           </div>
-
         </section>
 
         <main className="min-w-0 overflow-y-auto p-5">
