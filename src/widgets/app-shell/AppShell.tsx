@@ -5,6 +5,7 @@ import HomePage from "../home/HomePage";
 import ProfilePage from "../profile/ProfilePage";
 import SettingsPage from "../settings/SettingsPage";
 import CommerceToolkitModule from "../commerce-toolkit/CommerceToolkitModule";
+import PrototypeModule from "../prototype/PrototypeModule";
 import WindowControls from "../../shared/ui/WindowControls";
 import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 import { getRailTheme } from "../../shared/lib/rail-themes";
@@ -271,6 +272,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           />
         ) : active === "settings" ? (
           <SettingsPage user={user} appUpdate={appUpdate} />
+        ) : active === "prototype" ? (
+          <PrototypeModule />
         ) : (
           <CommerceToolkitModule
             moduleId={active}

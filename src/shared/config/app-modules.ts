@@ -1,6 +1,6 @@
-import { Rocket, type LucideIcon } from "lucide-react";
+import { GitBranch, Rocket, type LucideIcon } from "lucide-react";
 
-export type AppModuleId = "getting-started";
+export type AppModuleId = "getting-started" | "prototype";
 
 export type AppModuleDefinition = {
   id: AppModuleId;
@@ -16,6 +16,13 @@ export const APP_MODULES: AppModuleDefinition[] = [
     label: "시작하기",
     description: "커머스 제작 툴킷의 첫 작업대를 엽니다.",
     icon: Rocket,
+    ready: true,
+  },
+  {
+    id: "prototype",
+    label: "프로토타입",
+    description: "서버의 프로토타입 워크스페이스를 커머스 제작 기준으로 봅니다.",
+    icon: GitBranch,
     ready: true,
   },
 ];
