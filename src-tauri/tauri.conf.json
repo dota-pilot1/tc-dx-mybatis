@@ -5,7 +5,7 @@
   "identifier": "com.towercrane-commerce-toolkit.tauri",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1425",
+    "devUrl": "http://localhost:1435",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
