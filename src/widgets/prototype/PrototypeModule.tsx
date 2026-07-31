@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
-  ArrowRight,
   Boxes,
   ExternalLink,
   GitBranch,
@@ -81,10 +80,6 @@ function PrototypeModule() {
     void loadCategories(selectedWorkspaceId);
   }, [selectedWorkspaceId]);
 
-  const selectedWorkspace = workspaces.find(
-    (workspace) => workspace.id === selectedWorkspaceId,
-  );
-
   const prototypes = useMemo(() => {
     const q = query.trim().toLowerCase();
     return categories.flatMap((category) =>
@@ -109,38 +104,34 @@ function PrototypeModule() {
         </span>
       </PageHeader>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(0,1fr)] bg-surface-muted">
-        <aside className="min-h-0 border-r border-surface-border-soft bg-surface-raised">
-          <div className="border-b border-surface-border-soft p-4">
-            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-brand-primary">
-              Prototype Workspaces
-            </p>
-            <h1 className="mt-1 text-xl font-black tracking-tight text-text-primary">
-              설계 및 프로토타입 공간
-            </h1>
-            <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">
-              서버에 등록된 프로토타입 워크스페이스를 불러와 커머스 제작 후보를
-              빠르게 훑어봅니다.
-            </p>
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col bg-surface-muted">
+        <section className="shrink-0 border-b border-surface-border-soft bg-surface-raised px-4 py-3">
+          <div className="flex min-h-11 items-center gap-3">
+            <div className="flex min-w-0 shrink-0 items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-md border border-brand-border bg-brand-glass">
+                <GitBranch className="size-4 text-brand-primary" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.13em] text-brand-primary">
+                  Workspaces
+                </p>
+                <h1 className="truncate text-base font-black text-text-primary">
+                  설계 및 프로토타입 공간
+                </h1>
+              </div>
+            </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-            <button
-              type="button"
-              onClick={() => void loadWorkspaces()}
-              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
-            >
-              <RefreshCw className="size-3.5" />
-              새로고침
-            </button>
-
-            {loadingWorkspaces ? (
-              <EmptyMessage message="워크스페이스를 불러오는 중입니다." />
-            ) : workspaces.length === 0 ? (
-              <EmptyMessage message="등록된 프로토타입 워크스페이스가 없습니다." />
-            ) : (
-              <div className="space-y-2 overflow-y-auto">
-                {workspaces.map((workspace) => {
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+              {loadingWorkspaces ? (
+                <span className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-3 py-2 text-xs font-bold text-text-muted">
+                  워크스페이스 로딩 중
+                </span>
+              ) : workspaces.length === 0 ? (
+                <span className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-3 py-2 text-xs font-bold text-text-muted">
+                  등록된 워크스페이스 없음
+                </span>
+              ) : (
+                workspaces.map((workspace) => {
                   const active = workspace.id === selectedWorkspaceId;
                   return (
                     <button
@@ -148,60 +139,48 @@ function PrototypeModule() {
                       type="button"
                       onClick={() => setSelectedWorkspaceId(workspace.id)}
                       className={
-                        "w-full rounded-md border p-3 text-left transition-colors " +
+                        "flex h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-left transition-colors " +
                         (active
-                          ? "border-brand-border bg-brand-glass"
-                          : "border-surface-border-soft bg-surface-muted hover:border-brand-border")
+                          ? "border-brand-border bg-brand-glass text-brand-primary"
+                          : "border-surface-border-soft bg-surface-muted text-text-secondary hover:border-brand-border hover:text-text-primary")
                       }
+                      title={workspace.description || workspace.name}
                     >
-                      <div className="flex items-start gap-3">
-                        <span className="grid size-9 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-glass">
-                          <GitBranch className="size-4 text-brand-primary" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-black text-text-primary">
-                            {workspace.name}
-                          </span>
-                          <span className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-text-secondary">
-                            {workspace.description || "설명 없음"}
-                          </span>
-                        </span>
-                        <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted" />
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <Stat label="카테고리" value={workspace.categoryCount} />
-                        <Stat label="프로토타입" value={workspace.prototypeCount} />
-                      </div>
+                      <span className="max-w-[220px] truncate text-sm font-black">
+                        {workspace.name}
+                      </span>
+                      <span className="rounded bg-surface-raised px-1.5 py-0.5 text-[10px] font-black text-text-muted">
+                        {workspace.categoryCount}/{workspace.prototypeCount}
+                      </span>
                     </button>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
+
+            <div className="relative w-[280px] shrink-0">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="프로토타입 검색"
+                className="ui-input pl-9!"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadWorkspaces()}
+              className="grid size-9 shrink-0 place-items-center rounded-md border border-surface-border-soft bg-surface-muted text-text-secondary hover:border-brand-border hover:text-brand-primary"
+              title="새로고침"
+            >
+              <RefreshCw className="size-4" />
+            </button>
           </div>
-        </aside>
+
+        </section>
 
         <main className="min-w-0 overflow-y-auto p-5">
           <section className="rounded-md border border-surface-border-soft bg-surface-raised">
-            <div className="flex min-h-[76px] items-center justify-between gap-4 border-b border-surface-border-soft px-4">
-              <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-brand-primary">
-                  Workspace
-                </p>
-                <h2 className="mt-1 truncate text-xl font-black text-text-primary">
-                  {selectedWorkspace?.name ?? "프로토타입 워크스페이스"}
-                </h2>
-              </div>
-              <div className="relative w-[320px] shrink-0">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="프로토타입 검색"
-                  className="ui-input pl-9!"
-                />
-              </div>
-            </div>
-
             {error ? (
               <EmptyState
                 title="불러오지 못했습니다"
@@ -240,27 +219,6 @@ function PrototypeModule() {
           </section>
         </main>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <span className="rounded-md border border-surface-border-soft bg-surface-raised px-2 py-1.5">
-      <span className="block text-[10px] font-black text-text-muted">
-        {label}
-      </span>
-      <span className="mt-0.5 block text-base font-black text-text-primary">
-        {value}
-      </span>
-    </span>
-  );
-}
-
-function EmptyMessage({ message }: { message: string }) {
-  return (
-    <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-3 py-8 text-center text-xs font-bold text-text-muted">
-      {message}
     </div>
   );
 }
