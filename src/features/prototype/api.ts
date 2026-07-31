@@ -20,6 +20,13 @@ export type PrototypeWorkspace = {
   prototypeCount: number;
 };
 
+export type SavePrototypeWorkspacePayload = {
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  color?: string | null;
+};
+
 export type CatalogPrototype = {
   id: string;
   categoryId: string;
@@ -62,6 +69,39 @@ export function listPrototypeWorkspaces(): Promise<PrototypeWorkspace[]> {
   return apiRequest<PrototypeWorkspace[]>("/catalog/workspaces", {
     token: token(),
     errorMessage: "프로토타입 워크스페이스를 불러오지 못했습니다.",
+  });
+}
+
+export function createPrototypeWorkspace(
+  body: SavePrototypeWorkspacePayload,
+): Promise<PrototypeWorkspace> {
+  return apiRequest<PrototypeWorkspace>("/catalog/workspaces", {
+    method: "POST",
+    body,
+    token: token(),
+    errorMessage: "프로토타입 워크스페이스를 만들지 못했습니다.",
+  });
+}
+
+export function updatePrototypeWorkspace(
+  workspaceId: string,
+  body: SavePrototypeWorkspacePayload,
+): Promise<PrototypeWorkspace> {
+  return apiRequest<PrototypeWorkspace>(`/catalog/workspaces/${workspaceId}`, {
+    method: "PATCH",
+    body,
+    token: token(),
+    errorMessage: "프로토타입 워크스페이스를 수정하지 못했습니다.",
+  });
+}
+
+export function deletePrototypeWorkspace(
+  workspaceId: string,
+): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/catalog/workspaces/${workspaceId}`, {
+    method: "DELETE",
+    token: token(),
+    errorMessage: "프로토타입 워크스페이스를 삭제하지 못했습니다.",
   });
 }
 

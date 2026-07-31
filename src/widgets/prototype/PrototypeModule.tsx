@@ -5,12 +5,20 @@ import {
   ExternalLink,
   GitBranch,
   ImageOff,
+  Pencil,
+  Plus,
   RefreshCw,
   Search,
+  Settings2,
+  Trash2,
+  X,
 } from "lucide-react";
 import {
+  createPrototypeWorkspace,
+  deletePrototypeWorkspace,
   listPrototypeWorkspaces,
   listWorkspaceCategories,
+  updatePrototypeWorkspace,
   type CatalogCategory,
   type CatalogPrototype,
   type PrototypeWorkspace,
@@ -33,13 +41,25 @@ function PrototypeModule() {
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(
+    null,
+  );
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceDescription, setWorkspaceDescription] = useState("");
+  const [savingWorkspace, setSavingWorkspace] = useState(false);
+  const [managerError, setManagerError] = useState<string | null>(null);
 
   async function loadWorkspaces() {
     setLoadingWorkspaces(true);
     try {
       const data = await listPrototypeWorkspaces();
       setWorkspaces(data);
-      setSelectedWorkspaceId((current) => current ?? data[0]?.id ?? null);
+      setSelectedWorkspaceId((current) =>
+        current && data.some((workspace) => workspace.id === current)
+          ? current
+          : data[0]?.id ?? null,
+      );
       setError(null);
     } catch (err) {
       setError(
@@ -50,6 +70,17 @@ function PrototypeModule() {
     } finally {
       setLoadingWorkspaces(false);
     }
+  }
+
+  async function reloadWorkspaces(nextSelectedId?: string | null) {
+    const data = await listPrototypeWorkspaces();
+    setWorkspaces(data);
+    setSelectedWorkspaceId(
+      nextSelectedId && data.some((workspace) => workspace.id === nextSelectedId)
+        ? nextSelectedId
+        : data[0]?.id ?? null,
+    );
+    return data;
   }
 
   async function loadCategories(workspaceId: string) {
@@ -96,6 +127,78 @@ function PrototypeModule() {
     );
   }, [categories, query]);
 
+  function startCreateWorkspace() {
+    setEditingWorkspaceId(null);
+    setWorkspaceName("");
+    setWorkspaceDescription("");
+    setManagerError(null);
+  }
+
+  function startEditWorkspace(workspace: PrototypeWorkspace) {
+    setEditingWorkspaceId(workspace.id);
+    setWorkspaceName(workspace.name);
+    setWorkspaceDescription(workspace.description ?? "");
+    setManagerError(null);
+  }
+
+  async function saveWorkspace() {
+    const name = workspaceName.trim();
+    if (name.length < 2) {
+      setManagerError("워크스페이스 이름은 2자 이상이어야 합니다.");
+      return;
+    }
+
+    setSavingWorkspace(true);
+    setManagerError(null);
+    try {
+      const payload = {
+        name,
+        description: workspaceDescription.trim() || null,
+      };
+      const saved = editingWorkspaceId
+        ? await updatePrototypeWorkspace(editingWorkspaceId, payload)
+        : await createPrototypeWorkspace(payload);
+      await reloadWorkspaces(saved.id);
+      startEditWorkspace(saved);
+    } catch (err) {
+      setManagerError(
+        err instanceof Error
+          ? err.message
+          : "워크스페이스를 저장하지 못했습니다.",
+      );
+    } finally {
+      setSavingWorkspace(false);
+    }
+  }
+
+  async function removeWorkspace(workspace: PrototypeWorkspace) {
+    if (workspace.categoryCount > 0) {
+      setManagerError("카테고리가 있는 워크스페이스는 먼저 비워야 삭제할 수 있습니다.");
+      return;
+    }
+    if (!window.confirm(`'${workspace.name}' 워크스페이스를 삭제할까요?`)) {
+      return;
+    }
+
+    setSavingWorkspace(true);
+    setManagerError(null);
+    try {
+      await deletePrototypeWorkspace(workspace.id);
+      await reloadWorkspaces(
+        selectedWorkspaceId === workspace.id ? null : selectedWorkspaceId,
+      );
+      if (editingWorkspaceId === workspace.id) startCreateWorkspace();
+    } catch (err) {
+      setManagerError(
+        err instanceof Error
+          ? err.message
+          : "워크스페이스를 삭제하지 못했습니다.",
+      );
+    } finally {
+      setSavingWorkspace(false);
+    }
+  }
+
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <PageHeader>
@@ -104,7 +207,7 @@ function PrototypeModule() {
         </span>
       </PageHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col bg-surface-muted">
+      <div className="relative flex min-h-0 flex-1 flex-col bg-surface-muted">
         <section className="shrink-0 border-b border-surface-border-soft bg-surface-raised px-4 py-3">
           <div className="flex min-h-11 items-center gap-3">
             <div className="flex min-w-0 shrink-0 items-center gap-2">
@@ -175,6 +278,15 @@ function PrototypeModule() {
             >
               <RefreshCw className="size-4" />
             </button>
+            <button
+              type="button"
+              onClick={() => setManagerOpen(true)}
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-brand-border bg-brand-glass px-3 text-sm font-black text-brand-primary hover:bg-surface-muted"
+              title="워크스페이스 관리"
+            >
+              <Settings2 className="size-4" />
+              관리
+            </button>
           </div>
 
         </section>
@@ -218,7 +330,222 @@ function PrototypeModule() {
             )}
           </section>
         </main>
+
+        <WorkspaceManagerDrawer
+          open={managerOpen}
+          workspaces={workspaces}
+          editingWorkspaceId={editingWorkspaceId}
+          workspaceName={workspaceName}
+          workspaceDescription={workspaceDescription}
+          saving={savingWorkspace}
+          error={managerError}
+          onClose={() => setManagerOpen(false)}
+          onCreate={startCreateWorkspace}
+          onEdit={startEditWorkspace}
+          onDelete={(workspace) => void removeWorkspace(workspace)}
+          onNameChange={setWorkspaceName}
+          onDescriptionChange={setWorkspaceDescription}
+          onSave={() => void saveWorkspace()}
+        />
       </div>
+    </div>
+  );
+}
+
+function WorkspaceManagerDrawer({
+  open,
+  workspaces,
+  editingWorkspaceId,
+  workspaceName,
+  workspaceDescription,
+  saving,
+  error,
+  onClose,
+  onCreate,
+  onEdit,
+  onDelete,
+  onNameChange,
+  onDescriptionChange,
+  onSave,
+}: {
+  open: boolean;
+  workspaces: PrototypeWorkspace[];
+  editingWorkspaceId: string | null;
+  workspaceName: string;
+  workspaceDescription: string;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  onCreate: () => void;
+  onEdit: (workspace: PrototypeWorkspace) => void;
+  onDelete: (workspace: PrototypeWorkspace) => void;
+  onNameChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div
+      className={
+        "absolute inset-0 z-40 transition " +
+        (open ? "pointer-events-auto" : "pointer-events-none")
+      }
+    >
+      <button
+        type="button"
+        aria-label="워크스페이스 관리 닫기"
+        onClick={onClose}
+        className={
+          "absolute inset-0 bg-[color-mix(in_srgb,var(--foreground)_24%,transparent)] transition-opacity " +
+          (open ? "opacity-100" : "opacity-0")
+        }
+      />
+      <aside
+        className={
+          "absolute right-0 top-0 flex h-full w-[420px] max-w-[calc(100vw-24px)] flex-col border-l border-surface-border-soft bg-surface-raised shadow-2xl transition-transform duration-200 ease-out " +
+          (open ? "translate-x-0" : "translate-x-full")
+        }
+      >
+        <header className="flex min-h-14 items-center justify-between gap-3 border-b border-surface-border-soft px-4">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.13em] text-brand-primary">
+              Workspace Manager
+            </p>
+            <h2 className="truncate text-base font-black text-text-primary">
+              프로토타입 워크스페이스 관리
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-md border border-surface-border-soft bg-surface-muted text-text-secondary hover:border-brand-border hover:text-brand-primary"
+            title="닫기"
+          >
+            <X className="size-4" />
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <section className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-black text-text-primary">
+                {editingWorkspaceId ? "워크스페이스 수정" : "워크스페이스 추가"}
+              </h3>
+              <button
+                type="button"
+                onClick={onCreate}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-2.5 text-xs font-black text-brand-primary"
+              >
+                <Plus className="size-3.5" />
+                새 항목
+              </button>
+            </div>
+
+            <label className="mt-3 block text-xs font-black text-text-secondary">
+              이름
+              <input
+                value={workspaceName}
+                onChange={(event) => onNameChange(event.target.value)}
+                placeholder="예: Commerce MVP"
+                className="ui-input mt-1"
+              />
+            </label>
+            <label className="mt-3 block text-xs font-black text-text-secondary">
+              설명
+              <textarea
+                value={workspaceDescription}
+                onChange={(event) => onDescriptionChange(event.target.value)}
+                placeholder="워크스페이스 설명"
+                rows={4}
+                className="ui-input mt-1 h-auto resize-none py-2"
+              />
+            </label>
+            {error ? (
+              <p className="mt-3 rounded-md border border-[color-mix(in_srgb,var(--destructive)_35%,transparent)] bg-danger-glass px-3 py-2 text-xs font-bold text-[var(--destructive)]">
+                {error}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onSave}
+              className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-brand-primary px-3 text-sm font-black text-text-on-brand disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Pencil className="size-4" />
+              {saving ? "저장 중" : editingWorkspaceId ? "수정 저장" : "추가"}
+            </button>
+          </section>
+
+          <section className="mt-4 rounded-md border border-surface-border-soft bg-surface-muted p-3">
+            <h3 className="text-sm font-black text-text-primary">
+              워크스페이스 목록
+            </h3>
+            <div className="mt-3 space-y-2">
+              {workspaces.length === 0 ? (
+                <p className="rounded-md border border-dashed border-surface-border-soft bg-surface-raised px-3 py-6 text-center text-xs font-bold text-text-muted">
+                  등록된 워크스페이스가 없습니다.
+                </p>
+              ) : (
+                workspaces.map((workspace) => {
+                  const active = workspace.id === editingWorkspaceId;
+                  return (
+                    <div
+                      key={workspace.id}
+                      className={
+                        "rounded-md border p-3 " +
+                        (active
+                          ? "border-brand-border bg-brand-glass"
+                          : "border-surface-border-soft bg-surface-raised")
+                      }
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="grid size-8 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-glass">
+                          <GitBranch className="size-4 text-brand-primary" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <strong className="block truncate text-sm font-black text-text-primary">
+                            {workspace.name}
+                          </strong>
+                          <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-text-secondary">
+                            {workspace.description || "설명 없음"}
+                          </p>
+                          <p className="mt-2 text-[11px] font-black text-text-muted">
+                            카테고리 {workspace.categoryCount} · 프로토타입{" "}
+                            {workspace.prototypeCount}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onEdit(workspace)}
+                          className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-surface-border-soft bg-surface-muted px-2.5 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
+                        >
+                          <Pencil className="size-3.5" />
+                          수정
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(workspace)}
+                          disabled={workspace.categoryCount > 0 || saving}
+                          className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[color-mix(in_srgb,var(--destructive)_35%,transparent)] bg-danger-glass px-2.5 text-xs font-black text-[var(--destructive)] disabled:cursor-not-allowed disabled:opacity-45"
+                          title={
+                            workspace.categoryCount > 0
+                              ? "카테고리가 있는 워크스페이스는 삭제할 수 없습니다."
+                              : "삭제"
+                          }
+                        >
+                          <Trash2 className="size-3.5" />
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+      </aside>
     </div>
   );
 }
