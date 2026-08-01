@@ -38,10 +38,12 @@ import PrototypeReferenceCard from "../../features/prototype/PrototypeReferenceC
 import {
   createPrototypeWorkspace,
   createWorkspaceCategory,
+  deleteCatalogCategory,
   deletePrototypeWorkspace,
   listPrototypeWorkspaces,
   listWorkspaceCategories,
   reorderWorkspaceCategories,
+  updateCatalogCategory,
   updateCatalogPrototype,
   updatePrototypeWorkspace,
   type CatalogCategory,
@@ -51,6 +53,7 @@ import {
   type PrototypeWorkspace,
 } from "../../features/prototype/api";
 import PageHeader from "../../shared/ui/PageHeader";
+import Select from "../../shared/ui/Select";
 
 function PrototypeModule({
   onOpenPrototypeNote,
@@ -67,6 +70,9 @@ function PrototypeModule({
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [query, setQuery] = useState("");
   const [newTopicTitle, setNewTopicTitle] = useState("");
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
+  const [topicEditTitle, setTopicEditTitle] = useState("");
+  const [topicEditSummary, setTopicEditSummary] = useState("");
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +84,8 @@ function PrototypeModule({
   const [workspaceDescription, setWorkspaceDescription] = useState("");
   const [savingWorkspace, setSavingWorkspace] = useState(false);
   const [savingTopic, setSavingTopic] = useState(false);
+  const [savingTopicEdit, setSavingTopicEdit] = useState(false);
+  const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null);
   const [managerError, setManagerError] = useState<string | null>(null);
   const [editingPrototypeEntry, setEditingPrototypeEntry] = useState<{
     category: CatalogCategory;
@@ -97,9 +105,9 @@ function PrototypeModule({
     null,
   );
   const [savingPrototype, setSavingPrototype] = useState(false);
-  const [topicSidebarWidth, setTopicSidebarWidth] = useState(280);
+  const [topicSidebarWidth, setTopicSidebarWidth] = useState(350);
   const [resizingTopicSidebar, setResizingTopicSidebar] = useState(false);
-  const topicResizeStartRef = useRef({ x: 0, width: 280 });
+  const topicResizeStartRef = useRef({ x: 0, width: 350 });
   const topicSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -253,6 +261,81 @@ function PrototypeModule({
     void createQuickTopic(newTopicTitle);
   }
 
+  function startEditTopic(category: CatalogCategory) {
+    setEditingTopicId(category.id);
+    setTopicEditTitle(category.title);
+    setTopicEditSummary(category.summary);
+    setError(null);
+  }
+
+  function cancelEditTopic() {
+    setEditingTopicId(null);
+    setTopicEditTitle("");
+    setTopicEditSummary("");
+  }
+
+  async function saveTopicEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingTopicId) return;
+
+    const title = topicEditTitle.trim();
+    const summary = topicEditSummary.trim();
+    if (title.length < 2) {
+      setError("주제 이름은 2자 이상이어야 합니다.");
+      return;
+    }
+
+    setSavingTopicEdit(true);
+    setError(null);
+    try {
+      const saved = await updateCatalogCategory(editingTopicId, {
+        title,
+        summary: summary || `${title} 프로토타입`,
+      });
+      setCategories((current) =>
+        current.map((category) => (category.id === saved.id ? saved : category)),
+      );
+      setSelectedCategoryId(saved.id);
+      cancelEditTopic();
+      void loadWorkspaces();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "프로토타입 주제를 수정하지 못했습니다.",
+      );
+    } finally {
+      setSavingTopicEdit(false);
+    }
+  }
+
+  async function removeTopic(category: CatalogCategory) {
+    if (category.prototypes.length > 0) {
+      setError("프로토타입이 있는 주제는 먼저 프로토타입을 옮기거나 삭제해야 합니다.");
+      return;
+    }
+    if (!window.confirm(`'${category.title}' 주제를 삭제할까요?`)) return;
+
+    setDeletingTopicId(category.id);
+    setError(null);
+    try {
+      await deleteCatalogCategory(category.id);
+      setCategories((current) => {
+        const nextCategories = current.filter((item) => item.id !== category.id);
+        if (selectedCategoryId === category.id) {
+          setSelectedCategoryId(nextCategories[0]?.id ?? null);
+        }
+        return nextCategories;
+      });
+      if (editingTopicId === category.id) cancelEditTopic();
+      void loadWorkspaces();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "프로토타입 주제를 삭제하지 못했습니다.",
+      );
+    } finally {
+      setDeletingTopicId(null);
+    }
+  }
+
   useEffect(() => {
     void loadWorkspaces();
   }, []);
@@ -273,7 +356,7 @@ function PrototypeModule({
     function handlePointerMove(event: globalThis.PointerEvent) {
       const delta = event.clientX - topicResizeStartRef.current.x;
       const nextWidth = topicResizeStartRef.current.width + delta;
-      setTopicSidebarWidth(Math.max(220, Math.min(420, nextWidth)));
+      setTopicSidebarWidth(Math.max(320, Math.min(480, nextWidth)));
     }
 
     function handlePointerUp() {
@@ -605,9 +688,20 @@ function PrototypeModule({
                   newTopicTitle={newTopicTitle}
                   onNewTopicTitleChange={setNewTopicTitle}
                   onCreate={handleTopicCreateSubmit}
+                  editingTopicId={editingTopicId}
+                  topicEditTitle={topicEditTitle}
+                  topicEditSummary={topicEditSummary}
+                  onTopicEditTitleChange={setTopicEditTitle}
+                  onTopicEditSummaryChange={setTopicEditSummary}
+                  onTopicEditSave={saveTopicEdit}
+                  onTopicEditCancel={cancelEditTopic}
+                  onEditTopic={startEditTopic}
+                  onDeleteTopic={(category) => void removeTopic(category)}
                   onDragEnd={handleTopicDragEnd}
                   sensors={topicSensors}
                   creating={savingTopic}
+                  savingTopicEdit={savingTopicEdit}
+                  deletingTopicId={deletingTopicId}
                 />
                 <button
                   type="button"
@@ -1002,53 +1096,53 @@ function PrototypeEditorDrawer({
                 placeholder="https://github.com/..."
               />
             </label>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-black text-text-secondary">
-                URL
-                <input
-                  value={demoUrl}
-                  onChange={(event) => onDemoUrlChange(event.target.value)}
-                  className="ui-input mt-1"
-                  placeholder="https://..."
-                />
-              </label>
-              <label className="block text-xs font-black text-text-secondary">
-                Figma
-                <input
-                  value={figmaUrl}
-                  onChange={(event) => onFigmaUrlChange(event.target.value)}
-                  className="ui-input mt-1"
-                  placeholder="https://figma.com/..."
-                />
-              </label>
-            </div>
+            <label className="block text-xs font-black text-text-secondary">
+              URL
+              <input
+                value={demoUrl}
+                onChange={(event) => onDemoUrlChange(event.target.value)}
+                className="ui-input mt-1"
+                placeholder="https://..."
+              />
+            </label>
+            <label className="block text-xs font-black text-text-secondary">
+              Figma
+              <input
+                value={figmaUrl}
+                onChange={(event) => onFigmaUrlChange(event.target.value)}
+                className="ui-input mt-1"
+                placeholder="https://figma.com/..."
+              />
+            </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-black text-text-secondary">
                 상태
-                <select
+                <Select
                   value={status}
                   onChange={(event) =>
                     onStatusChange(event.target.value as PrototypeStatus)
                   }
-                  className="ui-input mt-1"
+                  className="mt-1"
+                  block
                 >
                   <option value="draft">초안</option>
                   <option value="building">제작중</option>
                   <option value="ready">완료</option>
-                </select>
+                </Select>
               </label>
               <label className="block text-xs font-black text-text-secondary">
                 공개 범위
-                <select
+                <Select
                   value={visibility}
                   onChange={(event) =>
                     onVisibilityChange(event.target.value as PrototypeVisibility)
                   }
-                  className="ui-input mt-1"
+                  className="mt-1"
+                  block
                 >
                   <option value="public">공개</option>
                   <option value="private">비공개</option>
-                </select>
+                </Select>
               </label>
             </div>
             <label className="block text-xs font-black text-text-secondary">
@@ -1134,9 +1228,20 @@ function CategoryList({
   newTopicTitle,
   onNewTopicTitleChange,
   onCreate,
+  editingTopicId,
+  topicEditTitle,
+  topicEditSummary,
+  onTopicEditTitleChange,
+  onTopicEditSummaryChange,
+  onTopicEditSave,
+  onTopicEditCancel,
+  onEditTopic,
+  onDeleteTopic,
   onDragEnd,
   sensors,
   creating,
+  savingTopicEdit,
+  deletingTopicId,
 }: {
   categories: CatalogCategory[];
   selectedCategoryId: string | null;
@@ -1144,9 +1249,20 @@ function CategoryList({
   newTopicTitle: string;
   onNewTopicTitleChange: (value: string) => void;
   onCreate: (event: FormEvent<HTMLFormElement>) => void;
+  editingTopicId: string | null;
+  topicEditTitle: string;
+  topicEditSummary: string;
+  onTopicEditTitleChange: (value: string) => void;
+  onTopicEditSummaryChange: (value: string) => void;
+  onTopicEditSave: (event: FormEvent<HTMLFormElement>) => void;
+  onTopicEditCancel: () => void;
+  onEditTopic: (category: CatalogCategory) => void;
+  onDeleteTopic: (category: CatalogCategory) => void;
   onDragEnd: (event: DragEndEvent) => void;
   sensors: ReturnType<typeof useSensors>;
   creating: boolean;
+  savingTopicEdit: boolean;
+  deletingTopicId: string | null;
 }) {
   return (
     <aside className="rounded-md border border-surface-border bg-surface-raised shadow-sm">
@@ -1157,24 +1273,59 @@ function CategoryList({
         </span>
       </div>
 
-      <form onSubmit={onCreate} className="border-b border-surface-border p-3">
-        <div className="flex gap-2">
-          <input
-            value={newTopicTitle}
-            onChange={(event) => onNewTopicTitleChange(event.target.value)}
-            placeholder="새 주제"
-            className="ui-input min-w-0 flex-1"
-          />
-          <button
-            type="submit"
-            disabled={creating}
-            className="grid size-9 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-glass text-brand-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
-            title="주제 추가"
-          >
-            <Plus className="size-4" />
-          </button>
-        </div>
-      </form>
+      {editingTopicId ? (
+        <form onSubmit={onTopicEditSave} className="border-b border-surface-border p-3">
+          <div className="space-y-2">
+            <input
+              value={topicEditTitle}
+              onChange={(event) => onTopicEditTitleChange(event.target.value)}
+              placeholder="주제 이름"
+              className="ui-input"
+            />
+            <input
+              value={topicEditSummary}
+              onChange={(event) => onTopicEditSummaryChange(event.target.value)}
+              placeholder="주제 설명"
+              className="ui-input"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onTopicEditCancel}
+                className="inline-flex min-h-8 flex-1 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted px-2.5 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={savingTopicEdit}
+                className="inline-flex min-h-8 flex-1 items-center justify-center rounded-md border border-brand-border bg-brand-glass px-2.5 text-xs font-black text-brand-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingTopicEdit ? "저장 중" : "수정 저장"}
+              </button>
+            </div>
+          </div>
+        </form>
+      ) : (
+        <form onSubmit={onCreate} className="border-b border-surface-border p-3">
+          <div className="flex gap-2">
+            <input
+              value={newTopicTitle}
+              onChange={(event) => onNewTopicTitleChange(event.target.value)}
+              placeholder="새 주제"
+              className="ui-input min-w-0 flex-1"
+            />
+            <button
+              type="submit"
+              disabled={creating}
+              className="grid size-9 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-glass text-brand-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+              title="주제 추가"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="p-2">
         <DndContext
@@ -1193,6 +1344,9 @@ function CategoryList({
                   category={category}
                   selected={selectedCategoryId === category.id}
                   onSelect={() => onSelect(category.id)}
+                  onEdit={() => onEditTopic(category)}
+                  onDelete={() => onDeleteTopic(category)}
+                  deleting={deletingTopicId === category.id}
                 />
               ))}
             </div>
@@ -1207,13 +1361,20 @@ function SortableTopicItem({
   category,
   selected,
   onSelect,
+  onEdit,
+  onDelete,
+  deleting,
 }: {
   category: CatalogCategory;
   selected: boolean;
   onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: category.id });
+  const canDelete = category.prototypes.length === 0;
 
   return (
     <div
@@ -1242,13 +1403,13 @@ function SortableTopicItem({
       <button
         type="button"
         onClick={onSelect}
-        className="min-w-0 flex-1 py-3 pr-3 text-left"
+        className="min-w-0 flex-1 py-3 text-left"
       >
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-black text-text-primary">
             {category.title}
           </span>
-          <span className="shrink-0 text-xs font-black text-brand-primary">
+          <span className="shrink-0 rounded-sm bg-brand-glass px-1.5 py-0.5 text-[11px] font-black text-brand-primary">
             {category.prototypes.length}
           </span>
         </div>
@@ -1256,6 +1417,25 @@ function SortableTopicItem({
           {category.summary || "설명 없음"}
         </p>
       </button>
+      <div className="flex shrink-0 items-center gap-1 pr-2 opacity-100 xl:opacity-0 xl:transition-opacity xl:group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="grid size-7 place-items-center rounded-md border border-surface-border-soft bg-surface-raised text-text-secondary hover:border-brand-border hover:text-brand-primary"
+          title="주제 수정"
+        >
+          <Pencil className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={!canDelete || deleting}
+          className="grid size-7 place-items-center rounded-md border border-[color-mix(in_srgb,var(--destructive)_30%,transparent)] bg-danger-glass text-[var(--destructive)] disabled:cursor-not-allowed disabled:opacity-40"
+          title={canDelete ? "주제 삭제" : "프로토타입이 있는 주제는 삭제할 수 없습니다"}
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

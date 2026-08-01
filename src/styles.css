@@ -166,13 +166,13 @@
 
   .prototype-topic-resizer {
     min-height: 100%;
-    width: 8px;
+    width: 3px;
   }
 }
 
 @media (min-width: 80rem) {
   .prototype-topic-layout {
-    grid-template-columns: var(--prototype-topic-width, 280px) 8px minmax(
+    grid-template-columns: minmax(320px, var(--prototype-topic-width, 350px)) 3px minmax(
         0,
         1fr
       );

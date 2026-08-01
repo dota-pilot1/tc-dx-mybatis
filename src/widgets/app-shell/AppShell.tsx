@@ -5,6 +5,8 @@ import HomePage from "../home/HomePage";
 import ProfilePage from "../profile/ProfilePage";
 import SettingsPage from "../settings/SettingsPage";
 import CommerceToolkitModule from "../commerce-toolkit/CommerceToolkitModule";
+import DesignReferenceModule from "../design-reference/DesignReferenceModule";
+import DesignTemplateModule from "../design-template/DesignTemplateModule";
 import PrototypeModule from "../prototype/PrototypeModule";
 import PrototypeNoteModule from "../prototype-note/PrototypeNoteModule";
 import WindowControls from "../../shared/ui/WindowControls";
@@ -105,7 +107,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto py-2">
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto py-1.5">
           {visibleModules.map((module) => {
             const isActive = module.id === active;
             return (
@@ -114,7 +116,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                 onClick={() => openView(module.id)}
                 title={module.label}
                 className={
-                  "group relative flex h-[48px] w-[50px] flex-col items-center justify-center gap-0.5 transition-all duration-300 ease-in-out " +
+                  "group relative flex h-[44px] w-[50px] flex-col items-center justify-center gap-0.5 transition-all duration-300 ease-in-out " +
                   (isActive
                     ? "rounded-[15px] bg-[color-mix(in_srgb,var(--primary-foreground)_25%,transparent)] text-text-on-brand"
                     : "rounded-[24px] text-[color-mix(in_srgb,var(--primary-foreground)_80%,transparent)] hover:rounded-[15px] hover:bg-[color-mix(in_srgb,var(--primary-foreground)_15%,transparent)] hover:text-text-on-brand")
@@ -126,8 +128,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                     (isActive ? "h-6" : "h-0 group-hover:h-3")
                   }
                 />
-                <module.icon className="size-5 shrink-0" strokeWidth={2} />
-                <span className="w-full overflow-hidden px-0.5 text-center text-[9.5px] font-semibold leading-[1.05] [word-break:keep-all]">
+                <module.icon className="size-[18px] shrink-0" strokeWidth={2} />
+                <span className="w-full overflow-hidden px-0.5 text-center text-[9px] font-semibold leading-[1.05] [word-break:keep-all]">
                   {module.label}
                 </span>
               </button>
@@ -305,6 +307,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
               setActive("prototype");
             }}
           />
+        ) : active === "design-template" ? (
+          <DesignTemplateModule />
+        ) : active === "design-reference" ? (
+          <DesignReferenceModule />
         ) : (
           <CommerceToolkitModule
             moduleId={active}

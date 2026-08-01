@@ -220,6 +220,54 @@ export function createWorkspaceCategory(
   });
 }
 
+export function updateCatalogCategory(
+  categoryId: string,
+  body: Partial<SaveCatalogCategoryPayload>,
+): Promise<CatalogCategory> {
+  const requestOptions = {
+    method: "PATCH",
+    body,
+    token: token(),
+    errorMessage: "프로토타입 주제를 수정하지 못했습니다.",
+  };
+
+  return apiRequest<CatalogCategory>(
+    `/catalog/topics/${categoryId}`,
+    requestOptions,
+  ).catch((err) => {
+    if (err instanceof ApiError && err.status === 404) {
+      return apiRequest<CatalogCategory>(
+        `/catalog/categories/${categoryId}`,
+        requestOptions,
+      );
+    }
+    throw err;
+  });
+}
+
+export function deleteCatalogCategory(
+  categoryId: string,
+): Promise<{ success: boolean; categoryId: string }> {
+  const requestOptions = {
+    method: "DELETE",
+    token: token(),
+    errorMessage: "프로토타입 주제를 삭제하지 못했습니다.",
+  };
+
+  return apiRequest<{ success: boolean; categoryId: string }>(
+    `/catalog/topics/${categoryId}`,
+    requestOptions,
+  ).catch((err) => {
+    if (err instanceof ApiError && err.status === 404) {
+      return apiRequest<{ success: boolean; categoryId: string }>(
+        `/catalog/categories/${categoryId}`,
+        requestOptions,
+      );
+    }
+    throw err;
+  });
+}
+
 export function reorderWorkspaceCategories(
   workspaceId: string,
   items: Array<{ id: string; orderIdx: number }>,

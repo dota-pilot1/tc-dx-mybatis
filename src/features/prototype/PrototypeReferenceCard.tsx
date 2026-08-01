@@ -6,6 +6,7 @@ import {
   GitBranch,
   ImageOff,
   Pencil,
+  PenTool,
   type LucideIcon,
 } from "lucide-react";
 import type { CatalogCategory, CatalogPrototype } from "./api";
@@ -42,8 +43,8 @@ function PrototypeReferenceCard({
   showTags = true,
 }: PrototypeReferenceCardProps) {
   const hasGithub = prototype.repoUrl.trim().length > 0;
-  const siteUrl = prototype.demoUrl || prototype.figmaUrl;
-  const hasSite = Boolean(siteUrl);
+  const hasFigma = Boolean(prototype.figmaUrl);
+  const hasSite = Boolean(prototype.demoUrl);
 
   return (
     <article
@@ -122,16 +123,23 @@ function PrototypeReferenceCard({
                 onClick={onOpenPrototype}
               />
             ) : null}
-            {onOpenNotes ? (
+            <div className="grid grid-cols-2 gap-2">
               <PrototypeReferenceButton
                 icon={FileText}
                 label="노트"
-                enabled
-                title="연관 노트로 이동"
-                onClick={onOpenNotes}
+                enabled={Boolean(onOpenNotes)}
+                title={onOpenNotes ? "연관 노트로 이동" : "연관 노트 없음"}
+                onClick={() => onOpenNotes?.()}
               />
-            ) : null}
-            <div className="grid grid-cols-2 gap-2">
+              <PrototypeReferenceButton
+                icon={PenTool}
+                label="Figma"
+                enabled={hasFigma}
+                title={hasFigma ? "Figma 주소 열기" : "Figma 주소 없음"}
+                onClick={() => {
+                  if (prototype.figmaUrl) void openUrl(prototype.figmaUrl);
+                }}
+              />
               <PrototypeReferenceButton
                 icon={GitBranch}
                 label="GitHub"
@@ -144,7 +152,9 @@ function PrototypeReferenceCard({
                 label="URL"
                 enabled={hasSite}
                 title={hasSite ? "사이트 주소 열기" : "사이트 주소 없음"}
-                onClick={() => siteUrl && void openUrl(siteUrl)}
+                onClick={() => {
+                  if (prototype.demoUrl) void openUrl(prototype.demoUrl);
+                }}
               />
             </div>
           </div>

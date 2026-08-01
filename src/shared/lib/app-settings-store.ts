@@ -7,7 +7,7 @@ import {
 } from "../config/app-modules";
 import { DEFAULT_RAIL_THEME, type RailThemeId } from "./rail-themes";
 
-const MENU_ORDER_VERSION = 1;
+const MENU_ORDER_VERSION = 3;
 
 type AppSettingsState = {
   menuOrderVersion: number;
