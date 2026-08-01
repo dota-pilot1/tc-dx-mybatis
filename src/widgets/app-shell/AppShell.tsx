@@ -9,6 +9,8 @@ import DesignReferenceModule from "../design-reference/DesignReferenceModule";
 import DesignTemplateModule from "../design-template/DesignTemplateModule";
 import PrototypeModule from "../prototype/PrototypeModule";
 import PrototypeNoteModule from "../prototype-note/PrototypeNoteModule";
+import TestingModule from "../testing/TestingModule";
+import CommonComponentModule from "../common-component/CommonComponentModule";
 import WindowControls from "../../shared/ui/WindowControls";
 import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 import { getRailTheme } from "../../shared/lib/rail-themes";
@@ -311,6 +313,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <DesignTemplateModule />
         ) : active === "design-reference" ? (
           <DesignReferenceModule />
+        ) : active === "common-component" ? (
+          <CommonComponentModule />
+        ) : active === "testing" ? (
+          <TestingModule />
         ) : (
           <CommerceToolkitModule
             moduleId={active}

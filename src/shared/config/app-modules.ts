@@ -80,7 +80,7 @@ export const APP_MODULES: AppModuleDefinition[] = [
   {
     id: "testing",
     label: "Testing",
-    description: "테스트 케이스와 검증 시나리오를 관리합니다.",
+    description: "테스팅 방법과 이론을 문서로 정리하고 적용 체크리스트로 잇습니다.",
     icon: TestTube2,
     ready: true,
   },

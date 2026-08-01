@@ -20,7 +20,8 @@ function Select({
   children,
   ...props
 }: Props) {
-  const sizeCls = size === "sm" ? "h-9 text-[12px]" : "h-10 text-sm";
+  // sm은 Input의 sm(h-9 / 13px)과 같은 리듬을 쓴다.
+  const sizeCls = size === "sm" ? "h-9 text-[13px]" : "h-10 text-sm";
   return (
     <div className={cn(block ? "relative block w-full" : "relative inline-block", className)}>
       <select

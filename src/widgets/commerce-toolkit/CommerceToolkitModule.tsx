@@ -10,11 +10,20 @@ type Props = {
   onOpen: (id: AppModuleId) => void;
 };
 
+type TopicStatus = "ready" | "draft";
+
 type TopicPlan = {
   title: string;
   summary: string;
   detail: string;
   items: string[];
+  /** 전용 모듈이 붙었는지 여부. draft는 아직 공용 UI 뼈대만 있는 상태. */
+  status: TopicStatus;
+};
+
+const STATUS_LABEL: Record<TopicStatus, string> = {
+  ready: "구현 완료",
+  draft: "UI 뼈대",
 };
 
 const START_TOPIC_IDS: AppModuleId[] = [
@@ -36,60 +45,70 @@ const TOPIC_PLANS: Record<Exclude<AppModuleId, "getting-started">, TopicPlan> = 
     summary: "프로토타입 워크스페이스와 주제별 결과물을 관리합니다.",
     detail: "실제 구현 산출물을 카드로 모으고, GitHub, URL, Figma, 노트를 한 카드에서 바로 연결합니다.",
     items: ["워크스페이스", "프로토타입 주제", "결과물 카드", "링크 액션"],
+    status: "ready",
   },
   "prototype-note": {
     title: "프로토타입 노트",
     summary: "프로토타입별 설계/구현 노트를 연결합니다.",
     detail: "좌측에서 프로토타입을 고르고, 우측에서 노트 섹션과 상세 내용을 관리하는 구조입니다.",
     items: ["프로토타입 목록", "노트 섹션", "상세 노트", "연결 상태"],
+    status: "ready",
   },
   "design-template": {
     title: "디자인 템플릿",
     summary: "커머스 화면 템플릿을 목록과 상세 구조로 정리합니다.",
     detail: "왼쪽에는 템플릿 유형 목록을 두고, 오른쪽에는 레이아웃 목적, 사용 조건, 포함 컴포넌트를 표시합니다.",
     items: ["상품 목록", "상세 화면", "장바구니", "주문/결제"],
+    status: "ready",
   },
   "design-reference": {
     title: "디자인 레퍼런스",
     summary: "디자인 생성 도구와 커머스 참고 사이트를 분류별 즐겨찾기로 관리합니다.",
     detail: "AI 디자인 생성, UI 패턴, 커머스 UX, 실제 커머스 사이트를 한 화면에서 분류하고 바로 열 수 있게 정리합니다.",
     items: ["AI 디자인 생성", "UI 패턴", "커머스 UX", "커머스 사이트"],
+    status: "ready",
   },
   "common-component": {
     title: "공통 컴퍼넌트",
     summary: "반복 UI를 공통 컴포넌트 후보로 분리합니다.",
     detail: "버튼, 입력, 카드, 필터, 테이블처럼 반복되는 UI를 사용처와 상태 기준으로 정리합니다.",
     items: ["입력 필드", "액션 버튼", "정보 카드", "필터/탭"],
+    status: "draft",
   },
   testing: {
     title: "Testing",
-    summary: "기능별 테스트 시나리오와 체크리스트를 관리합니다.",
-    detail: "정책, API, UI 흐름마다 필수 테스트 케이스를 목록화하고 검증 상태를 추적합니다.",
-    items: ["정책 테스트", "API 테스트", "UI 플로우", "회귀 체크"],
+    summary: "프로토타입 개발·유지보수에 필요한 테스팅 방법과 이론을 정리합니다.",
+    detail: "카테고리별 문서를 읽고, 각 문서 하단의 적용 체크리스트로 실제 작업에 옮깁니다.",
+    items: ["기초 이론", "레벨별 전략", "프로토타입 실전", "유지보수"],
+    status: "ready",
   },
   tutoring: {
     title: "Tutoring",
     summary: "학습 흐름과 실습 가이드를 구성합니다.",
     detail: "주제별 튜터링 자료를 왼쪽 목록에 두고, 오른쪽에서 설명, 예제, 실습 과제를 확인합니다.",
     items: ["개념 설명", "실습 과제", "코드 예시", "피드백"],
+    status: "draft",
   },
   devops: {
     title: "DevOps",
     summary: "배포와 운영 자동화 체크리스트를 정리합니다.",
     detail: "환경변수, 빌드, 릴리즈, 배포 검증, 장애 대응을 운영 기준으로 묶습니다.",
     items: ["환경 설정", "빌드/릴리즈", "배포 검증", "운영 점검"],
+    status: "draft",
   },
   ax: {
     title: "AX",
     summary: "AI 전환 관점의 업무 자동화 후보를 모읍니다.",
     detail: "사람이 반복하던 기획, 구현, 검증 흐름을 AI 작업 단위로 쪼개고 자동화 우선순위를 정리합니다.",
     items: ["업무 흐름", "자동화 후보", "프롬프트", "평가 기준"],
+    status: "draft",
   },
   challenge: {
     title: "Challenge",
     summary: "구현 챌린지와 실전 과제를 관리합니다.",
     detail: "작은 기능 단위의 요구사항, 제출 조건, 리뷰 기준을 카드와 상세 화면으로 구성합니다.",
     items: ["과제 목록", "요구사항", "제출 조건", "리뷰 기준"],
+    status: "draft",
   },
 };
 
@@ -112,29 +131,17 @@ function CommerceToolkitModule({ moduleId, onOpen }: Props) {
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted">
         <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-5 py-6">
-          <section className="rounded-md border border-surface-border-soft bg-surface-raised p-5">
-            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-brand-primary">
+          <section className="rounded-xl bg-[linear-gradient(115deg,var(--primary)_0%,color-mix(in_srgb,var(--primary)_74%,var(--foreground))_100%)] p-7 shadow-sm">
+            <span className="inline-flex rounded-full bg-text-on-brand/18 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-text-on-brand">
               Start
+            </span>
+            <h1 className="mt-4 text-[28px] font-black leading-tight tracking-tight text-text-on-brand">
+              10개 주제로 커머스 제작 도구를 확장하는 시작점
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-text-on-brand/85">
+              이커머스 프로토타입 공유, 디자인, 레퍼런스, 테스트, 학습 공유, DevOps, AX, Challenge까지
+              이커머스를 다루는 데 필요한 모든 기술 및 정보 공유를 다룹니다.
             </p>
-            <div className="mt-2 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-              <div className="min-w-0">
-                <h1 className="text-2xl font-black tracking-tight text-text-primary">
-                  10개 주제로 커머스 제작 도구를 확장하는 시작점
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-text-secondary">
-                  프로토타입과 노트를 중심축으로 두고, 디자인 템플릿, 디자인 레퍼런스, 공통 컴퍼넌트,
-                  테스트, 튜터링, DevOps, AX, 챌린지까지 같은 작업대에서 다룹니다.
-                  3번 이후 메뉴는 먼저 목록/상세 UI 뼈대를 놓고 점진적으로 채웁니다.
-                </p>
-              </div>
-              <div className="rounded-md border border-brand-border bg-brand-glass p-4">
-                <h2 className="text-sm font-black text-text-primary">메뉴명 기준</h2>
-                <p className="mt-2 text-sm font-bold leading-6 text-text-secondary">
-                  레일에서는 폭 때문에 <strong className="text-brand-primary">프로토 노트</strong>로 짧게 두고,
-                  본문 카드와 화면 제목에서는 <strong className="text-brand-primary">프로토타입 노트</strong>로 풀네임을 씁니다.
-                </p>
-              </div>
-            </div>
           </section>
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -150,6 +157,7 @@ function CommerceToolkitModule({ moduleId, onOpen }: Props) {
                   icon={module.icon}
                   title={plan.title}
                   summary={plan.summary}
+                  status={plan.status}
                   onOpen={() => onOpen(id)}
                 />
               );
@@ -166,36 +174,60 @@ function StartTopicCard({
   icon: Icon,
   title,
   summary,
+  status,
   onOpen,
 }: {
   index: number;
   icon: LucideIcon;
   title: string;
   summary: string;
+  status: TopicStatus;
   onOpen: () => void;
 }) {
+  const isReady = status === "ready";
+
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group flex min-h-[172px] flex-col rounded-md border border-surface-border-soft bg-surface-raised p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-muted"
+      className="group flex min-h-[188px] flex-col rounded-xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-glass">
-          <Icon className="size-5 text-brand-primary" />
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-glass transition group-hover:bg-brand-primary">
+          <Icon className="size-[22px] text-brand-primary transition group-hover:text-text-on-brand" />
         </span>
-        <span className="rounded-md border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-black text-text-muted">
-          {index}
+        <span
+          className={
+            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black " +
+            (isReady
+              ? "bg-brand-glass text-brand-primary"
+              : "bg-surface-muted text-text-muted")
+          }
+        >
+          <span
+            className={
+              "size-1.5 rounded-full " +
+              (isReady ? "bg-brand-primary" : "bg-text-muted")
+            }
+          />
+          {STATUS_LABEL[status]}
         </span>
       </div>
+
       <h2 className="mt-4 text-base font-black text-text-primary">{title}</h2>
-      <p className="mt-2 line-clamp-3 text-sm font-semibold leading-6 text-text-secondary">
+      <p className="mb-5 mt-2 line-clamp-3 text-sm font-semibold leading-6 text-text-secondary">
         {summary}
       </p>
-      <span className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-black text-brand-primary">
-        열기
-        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-      </span>
+
+      <div className="mt-auto flex items-center justify-between border-t border-surface-border-soft pt-3.5">
+        <span className="inline-flex items-center gap-1 text-sm font-black text-brand-primary">
+          열기
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </span>
+        <span className="text-[11px] font-black tabular-nums text-text-muted">
+          {String(index).padStart(2, "0")}
+        </span>
+      </div>
     </button>
   );
 }
