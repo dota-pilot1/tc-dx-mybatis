@@ -236,6 +236,7 @@ function ChatView({
     const store = useUnreadStore.getState();
     store.setActiveRoom(room.id);
     store.clearRoom(room.id);
+    toast.info(`${currentUserName}님이 입장했습니다.`);
     const token = getToken();
     if (token) markRoomRead(token, room.id).catch(() => {});
     return () => {
