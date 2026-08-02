@@ -1,6 +1,6 @@
 [package]
 name = "tc-toolkit-for-commerce"
-version = "0.1.7"
+version = "0.1.8"
 description = "커머스 개발 툴킷 앱"
 authors = ["you"]
 edition = "2021"
