@@ -34,44 +34,59 @@ export function useMeetingSocket(
     const token = getToken();
     if (!token) return;
 
-    const ws = new WebSocket(meetingSocketUrl(token));
-    socketRef.current = ws;
+    let disposed = false;
+    let retryTimer: number | undefined;
 
-    ws.onmessage = (ev) => {
-      let msg: { type: string; data?: unknown };
-      try {
-        msg = JSON.parse(ev.data as string);
-      } catch {
-        return;
-      }
-      if (msg.type === "MEETING_MESSAGE") {
-        const data = msg.data as MeetingMessage;
-        if (data.roomId === activeRoomRef.current) {
-          onMessageRef.current(data);
+    const connect = () => {
+      if (disposed) return;
+      const ws = new WebSocket(meetingSocketUrl(token));
+      socketRef.current = ws;
+
+      ws.onopen = () => {
+        const roomId = activeRoomRef.current;
+        if (roomId) {
+          ws.send(JSON.stringify({ type: "SUBSCRIBE", topic: `meeting/${roomId}` }));
         }
-      } else if (msg.type === "MEETING_MESSAGES_CLEARED") {
-        const data = msg.data as { roomId: string } | undefined;
-        if (data?.roomId === activeRoomRef.current) {
-          onClearedRef.current?.();
+      };
+
+      ws.onmessage = (ev) => {
+        let msg: { type: string; data?: unknown };
+        try {
+          msg = JSON.parse(ev.data as string);
+        } catch {
+          return;
         }
-      } else if (msg.type === "MEETING_MESSAGE_PINNED") {
-        const data = msg.data as MeetingMessage;
-        if (data.roomId === activeRoomRef.current) {
-          onPinnedRef.current?.(data);
+        if (msg.type === "MEETING_MESSAGE") {
+          const data = msg.data as MeetingMessage;
+          if (data.roomId === activeRoomRef.current) onMessageRef.current(data);
+        } else if (msg.type === "MEETING_MESSAGES_CLEARED") {
+          const data = msg.data as { roomId: string } | undefined;
+          if (data?.roomId === activeRoomRef.current) onClearedRef.current?.();
+        } else if (msg.type === "MEETING_MESSAGE_PINNED") {
+          const data = msg.data as MeetingMessage;
+          if (data.roomId === activeRoomRef.current) onPinnedRef.current?.(data);
+        } else if (msg.type === "MEETING_MESSAGE_REACTION") {
+          const data = msg.data as MeetingMessage;
+          if (data.roomId === activeRoomRef.current) onReactionRef.current?.(data);
+        } else if (msg.type === "MEETING_PRESENCE") {
+          const data = msg.data as { members?: MeetingMember[] } | undefined;
+          if (data?.members) onPresenceRef.current?.(data.members);
         }
-      } else if (msg.type === "MEETING_MESSAGE_REACTION") {
-        const data = msg.data as MeetingMessage;
-        if (data.roomId === activeRoomRef.current) {
-          onReactionRef.current?.(data);
-        }
-      } else if (msg.type === "MEETING_PRESENCE") {
-        const data = msg.data as { members?: MeetingMember[] } | undefined;
-        if (data?.members) onPresenceRef.current?.(data.members);
-      }
+      };
+
+      ws.onclose = () => {
+        if (!disposed) retryTimer = window.setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
     };
 
+    connect();
+
     return () => {
-      ws.close();
+      disposed = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      socketRef.current?.close();
       socketRef.current = null;
     };
   }, []);
