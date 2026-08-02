@@ -16,6 +16,8 @@ import ArchitecturePlaybookModule from "../architecture/ArchitecturePlaybookModu
 import CommercePlaybookModule from "../commerce/CommercePlaybookModule";
 import DbPlaybookModule from "../db/DbPlaybookModule";
 import SqlPlaybookModule from "../sql/SqlPlaybookModule";
+import DebuggingHistoryModule from "../debugging/DebuggingHistoryModule";
+import TechnicalDebtModule from "../technical-debt/TechnicalDebtModule";
 import ChatModule from "../chat/ChatModule";
 import CommonComponentModule from "../common-component/CommonComponentModule";
 import TutoringModule from "../tutoring/TutoringModuleSimple";
@@ -131,7 +133,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                 onClick={() => openView(module.id)}
                 title={module.label}
                 className={
-                  "group relative flex h-[44px] w-[50px] flex-col items-center justify-center gap-0.5 transition-all duration-300 ease-in-out " +
+                "group relative flex h-[44px] w-[50px] flex-col items-center justify-center gap-0.5 transition-all duration-300 ease-in-out " +
                   (isActive
                     ? "rounded-[15px] bg-[color-mix(in_srgb,var(--primary-foreground)_25%,transparent)] text-text-on-brand"
                     : "rounded-[24px] text-[color-mix(in_srgb,var(--primary-foreground)_80%,transparent)] hover:rounded-[15px] hover:bg-[color-mix(in_srgb,var(--primary-foreground)_15%,transparent)] hover:text-text-on-brand")
@@ -154,7 +156,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
 
         <div
           ref={accountRef}
-          className="relative flex w-full flex-col items-center gap-2 border-t border-[color-mix(in_srgb,var(--primary-foreground)_10%,transparent)] py-2.5"
+          className="relative flex w-full flex-wrap items-center justify-center gap-1.5 border-t border-[color-mix(in_srgb,var(--primary-foreground)_10%,transparent)] px-1 py-2"
         >
           <button
             onClick={() => void appUpdate.installUpdate()}
@@ -166,8 +168,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                   ? "업데이트 확인 중"
                   : "업데이트 없음"
             }
-            className={
-              "grid h-[22px] w-[58px] place-items-center rounded-lg border text-[10px] font-black leading-none shadow-sm transition-colors " +
+              className={
+              "grid h-[24px] w-[48px] place-items-center rounded-md border text-[9px] font-black leading-none shadow-sm transition-colors " +
               (appUpdate.state.status === "available"
                 ? "border-brand-border bg-brand-glass text-brand-primary hover:bg-[color-mix(in_srgb,var(--primary)_16%,transparent)]"
                 : "cursor-default border-[color-mix(in_srgb,var(--primary-foreground)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary-foreground)_20%,transparent)] text-[color-mix(in_srgb,var(--primary-foreground)_75%,transparent)]")
@@ -186,7 +188,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           {appVersion && (
             <span
               title={`Commerce Toolkit v${appVersion}`}
-              className="max-h-3 select-none overflow-hidden text-[10px] font-bold tabular-nums text-[color-mix(in_srgb,var(--primary-foreground)_85%,transparent)]"
+              className="max-h-3 select-none overflow-hidden text-[9px] font-bold tabular-nums text-[color-mix(in_srgb,var(--primary-foreground)_85%,transparent)]"
             >
               v{appVersion}
             </span>
@@ -195,7 +197,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             onClick={() => setActive("settings")}
             title="설정"
             className={
-              "flex h-[40px] w-[40px] items-center justify-center text-[17px] transition-all duration-200 " +
+              "flex h-[34px] w-[34px] items-center justify-center text-[15px] transition-all duration-200 " +
               (active === "settings"
                 ? "rounded-[14px] bg-[color-mix(in_srgb,var(--primary-foreground)_25%,transparent)] text-text-on-brand ring-1 ring-[color-mix(in_srgb,var(--primary-foreground)_50%,transparent)]"
                 : "rounded-[20px] text-[color-mix(in_srgb,var(--primary-foreground)_80%,transparent)] hover:rounded-[14px] hover:bg-[color-mix(in_srgb,var(--primary-foreground)_15%,transparent)] hover:text-text-on-brand")
@@ -207,13 +209,13 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             onClick={() => setAccountOpen((open) => !open)}
             title={`${displayName} · ${roleName}`}
             className={
-              "grid min-h-[56px] w-[58px] place-items-center gap-1 rounded-[13px] border px-1 py-1.5 text-[9px] font-extrabold transition-all " +
+              "grid h-[34px] w-[34px] place-items-center rounded-lg border p-0 text-[9px] font-extrabold transition-all " +
               (accountOpen || active === "profile"
                 ? "border-[color-mix(in_srgb,var(--primary-foreground)_60%,transparent)] bg-surface-raised text-text-primary shadow-lg"
                 : "border-transparent bg-transparent text-[color-mix(in_srgb,var(--primary-foreground)_85%,transparent)] hover:border-[color-mix(in_srgb,var(--primary-foreground)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary-foreground)_20%,transparent)] hover:text-text-on-brand")
             }
           >
-            <span className="grid h-[38px] w-[38px] place-items-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--primary-foreground)_30%,transparent)] bg-surface-raised text-[14px] font-black uppercase text-text-primary">
+            <span className="grid h-[28px] w-[28px] place-items-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--primary-foreground)_30%,transparent)] bg-surface-raised text-[11px] font-black uppercase text-text-primary">
               {user.profileImageUrl ? (
                 <img
                   src={user.profileImageUrl}
@@ -224,7 +226,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                 displayName.charAt(0) || "U"
               )}
             </span>
-            <span className="max-w-[50px] overflow-hidden text-ellipsis whitespace-nowrap">
+            <span className="sr-only max-w-[50px] overflow-hidden text-ellipsis whitespace-nowrap">
               {roleName}
             </span>
           </button>
@@ -344,6 +346,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <DbPlaybookModule />
         ) : active === "sql" ? (
           <SqlPlaybookModule />
+        ) : active === "debugging-playbook" ? (
+          <DebuggingHistoryModule />
+        ) : active === "skill-analysys" ? (
+          <TechnicalDebtModule />
         ) : active === "challenge" ? (
           <ChallengePlaybookModule />
         ) : active === "chat" ? (

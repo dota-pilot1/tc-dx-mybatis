@@ -4,6 +4,7 @@ import {
   CloudCog,
   Component,
   Database,
+  Bug,
   FileText,
   GitBranch,
   GraduationCap,
@@ -11,6 +12,7 @@ import {
   MessageCircle,
   Palette,
   ShoppingCart,
+  Scale,
   TestTube2,
   Trophy,
   type LucideIcon,
@@ -29,6 +31,8 @@ export type AppModuleId =
   | "commerce"
   | "db"
   | "sql"
+  | "debugging-playbook"
+  | "skill-analysys"
   | "ax"
   | "chat"
   | "challenge";
@@ -124,6 +128,20 @@ export const APP_MODULES: AppModuleDefinition[] = [
     label: "SQL Playbook",
     description: "SQL 쿼리·패턴·성능 기준을 문서로 정리합니다.",
     icon: Database,
+    ready: true,
+  },
+  {
+    id: "debugging-playbook",
+    label: "Debugging Playbook",
+    description: "원인·조치·재발 방지 기록을 문서로 남깁니다.",
+    icon: Bug,
+    ready: true,
+  },
+  {
+    id: "skill-analysys",
+    label: "Skill Analysys",
+    description: "기술부채의 영향과 상환 계획을 문서로 정리합니다.",
+    icon: Scale,
     ready: true,
   },
   {
