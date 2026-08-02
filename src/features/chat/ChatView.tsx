@@ -24,6 +24,7 @@ import { useUnreadStore } from "./unread-store";
 import MessageSearch from "./MessageSearch";
 import PageHeader from "../../shared/ui/PageHeader";
 import { Button } from "../../shared/ui/button";
+import { toast } from "../../shared/ui/Toast";
 
 type Props = {
   room: MeetingRoom;
@@ -212,6 +213,7 @@ function ChatView({
   const [searchOpen, setSearchOpen] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<HTMLInputElement | null>(null);
+  const presenceRef = useRef<{ roomId: string; ids: Set<string> } | null>(null);
 
   // @멘션 자동완성 상태
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -251,6 +253,21 @@ function ChatView({
     }
   };
 
+  // 접속 상태 변화는 채팅 기록에 남기지 않고 새로 들어온 사람만 토스트로 알린다.
+  const handlePresence = (nextMembers: MeetingMember[]) => {
+    const onlineIds = new Set(nextMembers.filter((member) => member.online).map((member) => member.id));
+    const previous = presenceRef.current;
+    if (!previous || previous.roomId !== room.id) {
+      presenceRef.current = { roomId: room.id, ids: onlineIds };
+      return;
+    }
+
+    nextMembers
+      .filter((member) => member.online && member.id !== currentUserId && !previous.ids.has(member.id))
+      .forEach((member) => toast.info(`${member.name}님이 입장했습니다.`));
+    presenceRef.current = { roomId: room.id, ids: onlineIds };
+  };
+
   // 갱신된 메시지를 목록·고정 목록에 반영 (리액션 등)
   const updateMessage = (m: MeetingMessage) => {
     setMessages((prev) => prev.map((x) => (x.id === m.id ? m : x)));
@@ -266,7 +283,14 @@ function ChatView({
     });
   };
 
-  useMeetingSocket(room.id, handleIncoming, () => setMessages([]), applyPinned, updateMessage);
+  useMeetingSocket(
+    room.id,
+    handleIncoming,
+    () => setMessages([]),
+    applyPinned,
+    updateMessage,
+    handlePresence,
+  );
 
   async function handleToggleReaction(m: MeetingMessage, emoji: string) {
     setReactionPickerFor(null);

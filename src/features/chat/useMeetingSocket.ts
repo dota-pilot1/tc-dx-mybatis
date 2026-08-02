@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { getToken } from "../../shared/api/client";
-import { meetingSocketUrl, type MeetingMessage } from "./api";
+import { meetingSocketUrl, type MeetingMember, type MeetingMessage } from "./api";
 
 /**
  * meeting WebSocket 연결을 관리한다.
@@ -14,17 +14,20 @@ export function useMeetingSocket(
   onCleared?: () => void,
   onPinned?: (message: MeetingMessage) => void,
   onReaction?: (message: MeetingMessage) => void,
+  onPresence?: (members: MeetingMember[]) => void,
 ) {
   const socketRef = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
   const onClearedRef = useRef(onCleared);
   const onPinnedRef = useRef(onPinned);
   const onReactionRef = useRef(onReaction);
+  const onPresenceRef = useRef(onPresence);
   const activeRoomRef = useRef<string | null>(activeRoomId);
   onMessageRef.current = onMessage;
   onClearedRef.current = onCleared;
   onPinnedRef.current = onPinned;
   onReactionRef.current = onReaction;
+  onPresenceRef.current = onPresence;
 
   // 연결 (1회)
   useEffect(() => {
@@ -61,6 +64,9 @@ export function useMeetingSocket(
         if (data.roomId === activeRoomRef.current) {
           onReactionRef.current?.(data);
         }
+      } else if (msg.type === "MEETING_PRESENCE") {
+        const data = msg.data as { members?: MeetingMember[] } | undefined;
+        if (data?.members) onPresenceRef.current?.(data.members);
       }
     };
 
