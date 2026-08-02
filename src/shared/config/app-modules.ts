@@ -8,6 +8,7 @@ import {
   GitBranch,
   GraduationCap,
   Layers3,
+  MessageCircle,
   Palette,
   ShoppingCart,
   TestTube2,
@@ -28,6 +29,7 @@ export type AppModuleId =
   | "commerce"
   | "db"
   | "ax"
+  | "chat"
   | "challenge";
 
 export type AppModuleDefinition = {
@@ -128,6 +130,13 @@ export const APP_MODULES: AppModuleDefinition[] = [
     label: "Challenge",
     description: "구현 챌린지와 실전 과제를 관리합니다.",
     icon: Trophy,
+    ready: true,
+  },
+  {
+    id: "chat",
+    label: "채팅",
+    description: "팀 채널과 메시지를 관리합니다.",
+    icon: MessageCircle,
     ready: true,
   },
 ];

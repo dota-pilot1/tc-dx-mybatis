@@ -15,6 +15,7 @@ import DevopsPlaybookModule from "../devops/DevopsPlaybookModule";
 import ArchitecturePlaybookModule from "../architecture/ArchitecturePlaybookModule";
 import CommercePlaybookModule from "../commerce/CommercePlaybookModule";
 import DbPlaybookModule from "../db/DbPlaybookModule";
+import ChatModule from "../chat/ChatModule";
 import CommonComponentModule from "../common-component/CommonComponentModule";
 import TutoringModule from "../tutoring/TutoringModuleSimple";
 import WindowControls from "../../shared/ui/WindowControls";
@@ -339,6 +340,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <CommercePlaybookModule />
         ) : active === "db" ? (
           <DbPlaybookModule />
+        ) : active === "chat" ? (
+          <ChatModule user={user} />
         ) : (
           <CommerceToolkitModule moduleId={active} />
         )}
