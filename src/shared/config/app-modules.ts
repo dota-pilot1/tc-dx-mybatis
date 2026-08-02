@@ -28,6 +28,7 @@ export type AppModuleId =
   | "architecture"
   | "commerce"
   | "db"
+  | "sql"
   | "ax"
   | "chat"
   | "challenge";
@@ -119,6 +120,13 @@ export const APP_MODULES: AppModuleDefinition[] = [
     ready: true,
   },
   {
+    id: "sql",
+    label: "SQL Playbook",
+    description: "SQL 쿼리·패턴·성능 기준을 문서로 정리합니다.",
+    icon: Database,
+    ready: true,
+  },
+  {
     id: "tutoring",
     label: "Tutoring",
     description: "튜토리얼을 카테고리·주제·본문으로 만들고 영상·문서를 연결합니다.",
@@ -127,8 +135,8 @@ export const APP_MODULES: AppModuleDefinition[] = [
   },
   {
     id: "challenge",
-    label: "Challenge",
-    description: "구현 챌린지와 실전 과제를 관리합니다.",
+    label: "Challenge Playbook",
+    description: "실전 과제를 3단 문서 구조와 참가자 제출로 관리합니다.",
     icon: Trophy,
     ready: true,
   },

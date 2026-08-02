@@ -106,11 +106,18 @@ const TOPIC_PLANS: Record<AppModuleId, TopicPlan> = {
     status: "ready",
   },
   challenge: {
-    title: "Challenge",
-    summary: "구현 챌린지와 실전 과제를 관리합니다.",
-    detail: "작은 기능 단위의 요구사항, 제출 조건, 리뷰 기준을 카드와 상세 화면으로 구성합니다.",
-    items: ["과제 목록", "요구사항", "제출 조건", "리뷰 기준"],
+    title: "Challenge Playbook",
+    summary: "실전 과제를 문서화하고 참가자 제출을 관리합니다.",
+    detail: "1차 영역, 2차 주제, 챌린지 문서의 3단 구조에 참가자 제출과 댓글을 연결합니다.",
+    items: ["1차 챌린지 영역", "2차 챌린지 주제", "챌린지 문서", "제출·댓글"],
     status: "draft",
+  },
+  chat: {
+    title: "채팅",
+    summary: "팀 채널과 메시지를 관리합니다.",
+    detail: "업무 대화를 채널과 메시지 단위로 확인합니다.",
+    items: ["채널", "대화", "멤버", "검색"],
+    status: "ready",
   },
 };
 

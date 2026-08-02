@@ -15,9 +15,11 @@ import DevopsPlaybookModule from "../devops/DevopsPlaybookModule";
 import ArchitecturePlaybookModule from "../architecture/ArchitecturePlaybookModule";
 import CommercePlaybookModule from "../commerce/CommercePlaybookModule";
 import DbPlaybookModule from "../db/DbPlaybookModule";
+import SqlPlaybookModule from "../sql/SqlPlaybookModule";
 import ChatModule from "../chat/ChatModule";
 import CommonComponentModule from "../common-component/CommonComponentModule";
 import TutoringModule from "../tutoring/TutoringModuleSimple";
+import ChallengePlaybookModule from "../challenge/ChallengePlaybookModule";
 import WindowControls from "../../shared/ui/WindowControls";
 import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 import { getRailTheme } from "../../shared/lib/rail-themes";
@@ -340,6 +342,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <CommercePlaybookModule />
         ) : active === "db" ? (
           <DbPlaybookModule />
+        ) : active === "sql" ? (
+          <SqlPlaybookModule />
+        ) : active === "challenge" ? (
+          <ChallengePlaybookModule />
         ) : active === "chat" ? (
           <ChatModule user={user} />
         ) : (
