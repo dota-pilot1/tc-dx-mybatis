@@ -48,7 +48,7 @@ export const APP_MODULES: AppModuleDefinition[] = [
   },
   {
     id: "prototype-note",
-    label: "프로토 노트",
+    label: "프로토타입 노트",
     description: "프로토타입 주제와 연결된 구현 노트를 봅니다.",
     icon: FileText,
     ready: true,
