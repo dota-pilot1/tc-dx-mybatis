@@ -9,13 +9,19 @@ import DesignReferenceModule from "../design-reference/DesignReferenceModule";
 import DesignTemplateModule from "../design-template/DesignTemplateModule";
 import PrototypeModule from "../prototype/PrototypeModule";
 import PrototypeNoteModule from "../prototype-note/PrototypeNoteModule";
-import TestingModule from "../testing/TestingModule";
+import TestingModule from "../testing/TestPlaybookModule";
+import AxPlaybookModule from "../ax/AxPlaybookModule";
+import DevopsPlaybookModule from "../devops/DevopsPlaybookModule";
+import ArchitecturePlaybookModule from "../architecture/ArchitecturePlaybookModule";
+import CommercePlaybookModule from "../commerce/CommercePlaybookModule";
+import DbPlaybookModule from "../db/DbPlaybookModule";
 import CommonComponentModule from "../common-component/CommonComponentModule";
+import TutoringModule from "../tutoring/TutoringModuleSimple";
 import WindowControls from "../../shared/ui/WindowControls";
 import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 import { getRailTheme } from "../../shared/lib/rail-themes";
 import { useAppUpdate } from "../../shared/lib/useAppUpdate";
-import { APP_MODULES, type AppModuleId } from "../../shared/config/app-modules";
+import { APP_MODULES, isAppModuleId, type AppModuleId } from "../../shared/config/app-modules";
 
 type Props = {
   user: User;
@@ -26,7 +32,11 @@ type Props = {
 type ViewId = "home" | "profile" | "settings" | AppModuleId;
 
 function AppShell({ user, onUserUpdate, onLogout }: Props) {
-  const [active, setActive] = useState<ViewId>("home");
+  const [active, setActive] = useState<ViewId>(() => {
+    const requestedView = new URLSearchParams(window.location.search).get("view");
+    if (requestedView === "home" || requestedView === "profile" || requestedView === "settings") return requestedView;
+    return requestedView && isAppModuleId(requestedView) ? requestedView : "home";
+  });
   const [prototypeNoteTargetId, setPrototypeNoteTargetId] = useState<
     string | null
   >(null);
@@ -315,13 +325,22 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <DesignReferenceModule />
         ) : active === "common-component" ? (
           <CommonComponentModule />
+        ) : active === "tutoring" ? (
+          <TutoringModule />
         ) : active === "testing" ? (
           <TestingModule />
+        ) : active === "ax" ? (
+          <AxPlaybookModule />
+        ) : active === "devops" ? (
+          <DevopsPlaybookModule />
+        ) : active === "architecture" ? (
+          <ArchitecturePlaybookModule />
+        ) : active === "commerce" ? (
+          <CommercePlaybookModule />
+        ) : active === "db" ? (
+          <DbPlaybookModule />
         ) : (
-          <CommerceToolkitModule
-            moduleId={active}
-            onOpen={(id) => openView(id)}
-          />
+          <CommerceToolkitModule moduleId={active} />
         )}
       </div>
 

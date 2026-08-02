@@ -364,3 +364,28 @@ body {
 .toast-in {
   animation: toast-in 0.18s ease-out;
 }
+
+/* Tutoring: keep the two navigation columns comfortable on wide desktop views. */
+@media (min-width: 1280px) {
+  main[class*="xl:grid-cols-[260px_360px"] {
+    grid-template-columns: 430px 440px minmax(0, 1fr);
+  }
+
+  main[class*="xl:grid-cols-[260px_360px"] > aside:first-child > div:nth-child(2) > div.border-l-2 {
+    border-left-width: 0;
+  }
+
+  main[class*="xl:grid-cols-[260px_360px"] > aside:first-child > div:nth-child(2) > div.border-l-2 > button:first-child {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  main[class*="xl:grid-cols-[260px_360px"] > aside:first-child > div:nth-child(2) > div.border-l-2 > button:first-child > span:last-child {
+    display: none;
+  }
+
+  main[class*="xl:grid-cols-[260px_360px"] > section > header > div:last-child > button:first-child {
+    display: none;
+  }
+}

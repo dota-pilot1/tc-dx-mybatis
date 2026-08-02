@@ -3,18 +3,19 @@ import {
   Bookmark,
   CloudCog,
   Component,
+  Database,
   FileText,
   GitBranch,
   GraduationCap,
+  Layers3,
   Palette,
-  Rocket,
+  ShoppingCart,
   TestTube2,
   Trophy,
   type LucideIcon,
 } from "lucide-react";
 
 export type AppModuleId =
-  | "getting-started"
   | "prototype"
   | "prototype-note"
   | "design-template"
@@ -23,6 +24,9 @@ export type AppModuleId =
   | "testing"
   | "tutoring"
   | "devops"
+  | "architecture"
+  | "commerce"
+  | "db"
   | "ax"
   | "challenge";
 
@@ -35,13 +39,6 @@ export type AppModuleDefinition = {
 };
 
 export const APP_MODULES: AppModuleDefinition[] = [
-  {
-    id: "getting-started",
-    label: "시작하기",
-    description: "커머스 제작 툴킷의 첫 작업대를 엽니다.",
-    icon: Rocket,
-    ready: true,
-  },
   {
     id: "prototype",
     label: "프로토타입",
@@ -79,30 +76,51 @@ export const APP_MODULES: AppModuleDefinition[] = [
   },
   {
     id: "testing",
-    label: "Testing",
-    description: "테스팅 방법과 이론을 문서로 정리하고 적용 체크리스트로 잇습니다.",
+    label: "테스트 플레이북",
+    description: "테스트 코드를 따라 만들고 실행 결과와 리뷰를 기록합니다.",
     icon: TestTube2,
+    ready: true,
+  },
+  {
+    id: "ax",
+    label: "AX 플레이북",
+    description: "AI를 개발과 업무에 적용한 과정을 문서로 정리합니다.",
+    icon: BrainCircuit,
+    ready: true,
+  },
+  {
+    id: "devops",
+    label: "DevOps Playbook",
+    description: "환경 설정부터 배포·운영 과정을 문서로 정리합니다.",
+    icon: CloudCog,
+    ready: true,
+  },
+  {
+    id: "architecture",
+    label: "Architecture Playbook",
+    description: "프론트엔드·백엔드 아키텍처와 FSD·DDD 설계를 문서로 정리합니다.",
+    icon: Layers3,
+    ready: true,
+  },
+  {
+    id: "commerce",
+    label: "Commerce Playbook",
+    description: "주문·결제·후원·배송 도메인의 흐름과 규칙을 문서로 정리합니다.",
+    icon: ShoppingCart,
+    ready: true,
+  },
+  {
+    id: "db",
+    label: "DB Playbook",
+    description: "스키마·마이그레이션·인덱스·트랜잭션 기준을 문서로 정리합니다.",
+    icon: Database,
     ready: true,
   },
   {
     id: "tutoring",
     label: "Tutoring",
-    description: "학습 흐름과 튜터링 콘텐츠를 설계합니다.",
+    description: "튜토리얼을 카테고리·주제·본문으로 만들고 영상·문서를 연결합니다.",
     icon: GraduationCap,
-    ready: true,
-  },
-  {
-    id: "devops",
-    label: "DevOps",
-    description: "배포, 운영, 자동화 체크리스트를 정리합니다.",
-    icon: CloudCog,
-    ready: true,
-  },
-  {
-    id: "ax",
-    label: "AX",
-    description: "AI 전환 관점의 업무 흐름과 자동화 후보를 정리합니다.",
-    icon: BrainCircuit,
     ready: true,
   },
   {

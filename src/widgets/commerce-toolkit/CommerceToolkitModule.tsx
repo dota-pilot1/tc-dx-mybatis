@@ -1,4 +1,4 @@
-import { ArrowRight, LayoutList, PanelRight, type LucideIcon } from "lucide-react";
+import { LayoutList, PanelRight } from "lucide-react";
 import {
   APP_MODULES,
   type AppModuleId,
@@ -7,7 +7,6 @@ import PageHeader from "../../shared/ui/PageHeader";
 
 type Props = {
   moduleId: AppModuleId;
-  onOpen: (id: AppModuleId) => void;
 };
 
 type TopicStatus = "ready" | "draft";
@@ -21,25 +20,7 @@ type TopicPlan = {
   status: TopicStatus;
 };
 
-const STATUS_LABEL: Record<TopicStatus, string> = {
-  ready: "구현 완료",
-  draft: "UI 뼈대",
-};
-
-const START_TOPIC_IDS: AppModuleId[] = [
-  "prototype",
-  "prototype-note",
-  "design-template",
-  "design-reference",
-  "common-component",
-  "testing",
-  "tutoring",
-  "devops",
-  "ax",
-  "challenge",
-];
-
-const TOPIC_PLANS: Record<Exclude<AppModuleId, "getting-started">, TopicPlan> = {
+const TOPIC_PLANS: Record<AppModuleId, TopicPlan> = {
   prototype: {
     title: "프로토타입",
     summary: "프로토타입 워크스페이스와 주제별 결과물을 관리합니다.",
@@ -76,32 +57,53 @@ const TOPIC_PLANS: Record<Exclude<AppModuleId, "getting-started">, TopicPlan> = 
     status: "draft",
   },
   testing: {
-    title: "Testing",
-    summary: "프로토타입 개발·유지보수에 필요한 테스팅 방법과 이론을 정리합니다.",
-    detail: "카테고리별 문서를 읽고, 각 문서 하단의 적용 체크리스트로 실제 작업에 옮깁니다.",
-    items: ["기초 이론", "레벨별 전략", "프로토타입 실전", "유지보수"],
+    title: "테스트 플레이북",
+    summary: "테스트 코드를 따라 만들고 실행 결과와 리뷰를 남깁니다.",
+    detail: "1차 테스트 영역과 2차 실행 문서를 따라가며 코드·명령어·증거·원천 모듈을 기록합니다.",
+    items: ["실행 과정", "테스트 코드", "실행 증거", "팀 리뷰"],
     status: "ready",
   },
   tutoring: {
     title: "Tutoring",
-    summary: "학습 흐름과 실습 가이드를 구성합니다.",
-    detail: "주제별 튜터링 자료를 왼쪽 목록에 두고, 오른쪽에서 설명, 예제, 실습 과제를 확인합니다.",
-    items: ["개념 설명", "실습 과제", "코드 예시", "피드백"],
-    status: "draft",
+    summary: "카테고리·주제·본문으로 튜토리얼을 만들고 영상과 참고 문서를 연결합니다.",
+    detail: "왼쪽에서 1차 카테고리와 2차 주제를 고르고, 오른쪽에서 Lexical 본문·YouTube 영상·참고 문서를 관리합니다.",
+    items: ["1차 카테고리", "2차 주제", "본문 편집", "영상·문서 연결"],
+    status: "ready",
   },
   devops: {
-    title: "DevOps",
-    summary: "배포와 운영 자동화 체크리스트를 정리합니다.",
-    detail: "환경변수, 빌드, 릴리즈, 배포 검증, 장애 대응을 운영 기준으로 묶습니다.",
+    title: "DevOps Playbook",
+    summary: "환경 설정부터 배포·운영 과정을 문서로 정리합니다.",
+    detail: "1차 영역, 2차 주제, 여러 Lexical 문서로 DevOps 실행 과정을 쌓습니다.",
     items: ["환경 설정", "빌드/릴리즈", "배포 검증", "운영 점검"],
-    status: "draft",
+    status: "ready",
+  },
+  architecture: {
+    title: "Architecture Playbook",
+    summary: "프론트엔드·백엔드 구조와 설계 원칙을 문서로 정리합니다.",
+    detail: "FSD, DDD, 모듈 경계, 계층 설계와 실제 적용 과정을 Lexical 문서로 쌓습니다.",
+    items: ["프론트엔드 아키텍처", "백엔드 아키텍처", "FSD", "DDD"],
+    status: "ready",
+  },
+  commerce: {
+    title: "Commerce Playbook",
+    summary: "커머스 도메인의 업무 흐름과 구현 규칙을 문서로 정리합니다.",
+    detail: "주문, 결제, 후원, 배송, 환불과 관리자·사용자 흐름을 실제 구현 기준으로 쌓습니다.",
+    items: ["주문 흐름", "결제·환불", "후원·구매", "배송 추적"],
+    status: "ready",
+  },
+  db: {
+    title: "DB Playbook",
+    summary: "데이터베이스 설계와 운영 기준을 문서로 정리합니다.",
+    detail: "스키마 설계, 마이그레이션, 인덱스, 트랜잭션과 쿼리 검증 과정을 기록합니다.",
+    items: ["스키마 설계", "마이그레이션", "인덱스", "트랜잭션·쿼리"],
+    status: "ready",
   },
   ax: {
-    title: "AX",
-    summary: "AI 전환 관점의 업무 자동화 후보를 모읍니다.",
-    detail: "사람이 반복하던 기획, 구현, 검증 흐름을 AI 작업 단위로 쪼개고 자동화 우선순위를 정리합니다.",
-    items: ["업무 흐름", "자동화 후보", "프롬프트", "평가 기준"],
-    status: "draft",
+    title: "AX 플레이북",
+    summary: "AI를 개발과 업무에 적용한 과정을 문서로 정리합니다.",
+    detail: "1차 AX 영역, 2차 AX 주제, Lexical 문서로 실제 적용 과정을 쌓습니다.",
+    items: ["AX 영역", "적용 주제", "Lexical 문서", "실제 적용 과정"],
+    status: "ready",
   },
   challenge: {
     title: "Challenge",
@@ -116,125 +118,10 @@ function moduleById(id: AppModuleId) {
   return APP_MODULES.find((module) => module.id === id);
 }
 
-function CommerceToolkitModule({ moduleId, onOpen }: Props) {
-  if (moduleId !== "getting-started") {
-    return <SkeletonTopicModule moduleId={moduleId} />;
-  }
-
-  return (
-    <div className="flex min-w-0 flex-1 flex-col">
-      <PageHeader>
-        <span className="text-[14px] font-bold tracking-tight text-text-primary">
-          Towercrane Commerce Toolkit
-        </span>
-      </PageHeader>
-
-      <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted">
-        <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-5 py-6">
-          <section className="rounded-xl bg-[linear-gradient(115deg,var(--primary)_0%,color-mix(in_srgb,var(--primary)_74%,var(--foreground))_100%)] p-7 shadow-sm">
-            <span className="inline-flex rounded-full bg-text-on-brand/18 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-text-on-brand">
-              Start
-            </span>
-            <h1 className="mt-4 text-[28px] font-black leading-tight tracking-tight text-text-on-brand">
-              10개 주제로 커머스 제작 도구를 확장하는 시작점
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-text-on-brand/85">
-              이커머스 프로토타입 공유, 디자인, 레퍼런스, 테스트, 학습 공유, DevOps, AX, Challenge까지
-              이커머스를 다루는 데 필요한 모든 기술 및 정보 공유를 다룹니다.
-            </p>
-          </section>
-
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {START_TOPIC_IDS.map((id, index) => {
-              const module = moduleById(id);
-              const plan = TOPIC_PLANS[id as Exclude<AppModuleId, "getting-started">];
-              if (!module) return null;
-
-              return (
-                <StartTopicCard
-                  key={id}
-                  index={index + 1}
-                  icon={module.icon}
-                  title={plan.title}
-                  summary={plan.summary}
-                  status={plan.status}
-                  onOpen={() => onOpen(id)}
-                />
-              );
-            })}
-          </section>
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function StartTopicCard({
-  index,
-  icon: Icon,
-  title,
-  summary,
-  status,
-  onOpen,
-}: {
-  index: number;
-  icon: LucideIcon;
-  title: string;
-  summary: string;
-  status: TopicStatus;
-  onOpen: () => void;
-}) {
-  const isReady = status === "ready";
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group flex min-h-[188px] flex-col rounded-xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-glass transition group-hover:bg-brand-primary">
-          <Icon className="size-[22px] text-brand-primary transition group-hover:text-text-on-brand" />
-        </span>
-        <span
-          className={
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black " +
-            (isReady
-              ? "bg-brand-glass text-brand-primary"
-              : "bg-surface-muted text-text-muted")
-          }
-        >
-          <span
-            className={
-              "size-1.5 rounded-full " +
-              (isReady ? "bg-brand-primary" : "bg-text-muted")
-            }
-          />
-          {STATUS_LABEL[status]}
-        </span>
-      </div>
-
-      <h2 className="mt-4 text-base font-black text-text-primary">{title}</h2>
-      <p className="mb-5 mt-2 line-clamp-3 text-sm font-semibold leading-6 text-text-secondary">
-        {summary}
-      </p>
-
-      <div className="mt-auto flex items-center justify-between border-t border-surface-border-soft pt-3.5">
-        <span className="inline-flex items-center gap-1 text-sm font-black text-brand-primary">
-          열기
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-        </span>
-        <span className="text-[11px] font-black tabular-nums text-text-muted">
-          {String(index).padStart(2, "0")}
-        </span>
-      </div>
-    </button>
-  );
-}
-
-function SkeletonTopicModule({ moduleId }: { moduleId: AppModuleId }) {
+// 전용 모듈이 아직 없는 메뉴의 공용 UI 뼈대.
+function CommerceToolkitModule({ moduleId }: Props) {
   const module = moduleById(moduleId);
-  const plan = TOPIC_PLANS[moduleId as Exclude<AppModuleId, "getting-started">];
+  const plan = TOPIC_PLANS[moduleId];
   const Icon = module?.icon ?? LayoutList;
 
   return (
