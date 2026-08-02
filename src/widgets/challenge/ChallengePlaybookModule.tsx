@@ -1,5 +1,4 @@
 import {
-  CheckSquare,
   Check,
   FileText,
   LoaderCircle,
@@ -23,7 +22,6 @@ import {
   listChallengeDocuments,
   listChallengeTopics,
   saveChallengeSubmission,
-  type ChallengeBlock,
   type ChallengeCategory,
   type ChallengeComment,
   type ChallengeDocument,
@@ -34,16 +32,12 @@ import PageHeader from "../../shared/ui/PageHeader";
 
 type CreateDocumentForm = {
   title: string;
-  summary: string;
   content: string;
-  checklist: string;
 };
 
 const EMPTY_DOCUMENT: CreateDocumentForm = {
   title: "",
-  summary: "",
   content: "",
-  checklist: "",
 };
 
 function ChallengePlaybookModule() {
@@ -60,7 +54,6 @@ function ChallengePlaybookModule() {
   const [topicDraft, setTopicDraft] = useState("");
   const [documentForm, setDocumentForm] = useState<CreateDocumentForm>(EMPTY_DOCUMENT);
   const [submissionText, setSubmissionText] = useState("");
-  const [githubUrl, setGithubUrl] = useState("");
   const [commentDraft, setCommentDraft] = useState("");
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -102,7 +95,6 @@ function ChallengePlaybookModule() {
       setDetail(nextDetail);
       setSubmission(nextSubmission);
       setSubmissionText(nextSubmission?.comment ?? "");
-      setGithubUrl(nextSubmission?.githubUrl ?? "");
       setComments(nextComments);
       setError("");
     } catch (reason: unknown) {
@@ -153,7 +145,8 @@ function ChallengePlaybookModule() {
       const created = await createChallengeDocument(topic.id, {
         ...documentForm,
         title: documentForm.title.trim(),
-        summary: documentForm.summary.trim(),
+        summary: "",
+        checklist: "",
       });
       setDocumentForm(EMPTY_DOCUMENT);
       setDocumentDialogOpen(false);
@@ -166,12 +159,11 @@ function ChallengePlaybookModule() {
   }
 
   async function submitResult() {
-    if (!document || (!submissionText.trim() && !githubUrl.trim())) return;
+    if (!document || !submissionText.trim()) return;
     setBusy(true);
     try {
       const saved = await saveChallengeSubmission(document.id, submission?.id, {
         comment: submissionText.trim(),
-        githubUrl: githubUrl.trim() || undefined,
       });
       setSubmission(saved);
       setComments(await listChallengeComments(saved.id));
@@ -299,7 +291,6 @@ function ChallengePlaybookModule() {
                         <FileText className="mt-0.5 size-4 shrink-0 text-brand-primary" />
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-black text-text-primary">{item.title}</span>
-                          <span className="mt-1 block truncate text-xs font-semibold text-text-muted">{item.summary || "요약 없음"}</span>
                         </span>
                       </button>
                     ))}
@@ -312,27 +303,31 @@ function ChallengePlaybookModule() {
               </section>
 
               {detail && (
-                <div className="mt-4 space-y-3">
-                  <section className="rounded-md border border-brand-border bg-brand-glass p-4">
-                    <h2 className="text-lg font-black text-text-primary">{detail.title}</h2>
-                    {detail.summary && <p className="mt-2 text-sm font-semibold text-text-secondary">{detail.summary}</p>}
-                  </section>
-                  {(detail.blocks ?? []).map((block) => (
-                    <DocumentBlock key={block.id} block={block} />
+                <div className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-5">
+                  <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-2xl">
+                    <header className="flex items-center justify-between gap-3 border-b border-surface-border-soft px-5 py-4">
+                      <div className="min-w-0"><p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-brand-primary">{category?.name} &gt; {topic?.title}</p><h2 className="truncate text-lg font-black text-text-primary">{detail.title}</h2></div>
+                      <button type="button" onClick={() => setDetail(null)} className="ui-icon-button h-8 w-8" title="닫기"><X className="size-4" /></button>
+                    </header>
+                    <div className="min-h-0 space-y-3 overflow-y-auto p-5">
+                  {(detail.blocks ?? []).filter((block) => block.blockType !== "CHECKLIST").map((block) => (
+                    <section key={block.id} className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                      <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-text-secondary">{block.content}</p>
+                    </section>
                   ))}
                   <SubmissionSection
                     submission={submission}
                     submissionText={submissionText}
-                    githubUrl={githubUrl}
                     comments={comments}
                     commentDraft={commentDraft}
                     busy={busy}
                     onSubmissionText={setSubmissionText}
-                    onGithubUrl={setGithubUrl}
                     onCommentDraft={setCommentDraft}
                     onSubmit={() => void submitResult()}
                     onComment={() => void addComment()}
                   />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -444,43 +439,30 @@ function ListRow({ title, active, icon, onClick }: { title: string; active?: boo
   );
 }
 
-function DocumentBlock({ block }: { block: ChallengeBlock }) {
-  if (block.blockType === "CHECKLIST") {
-    let labels: string[] = [];
-    try {
-      const parsed = JSON.parse(block.content) as Array<{ label?: string }>;
-      labels = parsed.map((item) => item.label ?? "").filter(Boolean);
-    } catch {
-      labels = block.content.split("\n").filter(Boolean);
-    }
-    return (
-      <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-        <h3 className="flex items-center gap-2 text-sm font-black text-text-primary"><CheckSquare className="size-4 text-brand-primary" />{block.title || "완료 조건"}</h3>
-        <div className="mt-3 space-y-2">{labels.map((label) => <p key={label} className="flex gap-2 text-sm font-semibold text-text-secondary"><CheckSquare className="mt-0.5 size-4 shrink-0 text-text-muted" />{label}</p>)}</div>
-      </section>
-    );
-  }
-  return <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4"><h3 className="text-sm font-black text-text-primary">{block.title || "챌린지 설명"}</h3><p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-6 text-text-secondary">{block.content}</p></section>;
-}
-
-function SubmissionSection({ submission, submissionText, githubUrl, comments, commentDraft, busy, onSubmissionText, onGithubUrl, onCommentDraft, onSubmit, onComment }: {
+function SubmissionSection({ submission, submissionText, comments, commentDraft, busy, onSubmissionText, onCommentDraft, onSubmit, onComment }: {
   submission: ChallengeSubmission | null;
   submissionText: string;
-  githubUrl: string;
   comments: ChallengeComment[];
   commentDraft: string;
   busy: boolean;
   onSubmissionText: (value: string) => void;
-  onGithubUrl: (value: string) => void;
   onCommentDraft: (value: string) => void;
   onSubmit: () => void;
   onComment: () => void;
 }) {
-  return <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4"><div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 text-sm font-black text-text-primary"><Trophy className="size-4 text-brand-primary" />내 제출</h3>{submission && <span className="rounded-md border border-brand-border bg-brand-glass px-2 py-1 text-[10px] font-black text-brand-primary">{submission.status}</span>}</div><textarea value={submissionText} onChange={(event) => onSubmissionText(event.target.value)} placeholder="구현 내용과 확인 방법을 적어주세요." className="ui-input mt-3 min-h-24 py-2 text-sm" /><input value={githubUrl} onChange={(event) => onGithubUrl(event.target.value)} placeholder="GitHub 또는 결과물 URL" className="ui-input mt-2 h-10 text-sm" /><div className="mt-3 flex justify-end"><button type="button" onClick={onSubmit} disabled={busy || (!submissionText.trim() && !githubUrl.trim())} className="rounded-md bg-brand-primary px-4 py-2 text-xs font-black text-text-on-brand disabled:opacity-40">{submission ? "제출 수정" : "제출"}</button></div>{submission && <div className="mt-4 border-t border-surface-border-soft pt-4"><h4 className="flex items-center gap-2 text-xs font-black text-text-primary"><MessageCircle className="size-4 text-brand-primary" />제출 댓글 <span className="text-text-muted">{comments.length}</span></h4><div className="mt-3 space-y-2">{comments.map((comment) => <div key={comment.id} className="rounded-md bg-surface-muted px-3 py-2"><div className="flex items-center gap-2 text-[10px] font-black text-text-muted"><span className="text-text-primary">{comment.authorName}</span><span>{new Date(comment.createdAt).toLocaleString("ko-KR")}</span></div><p className="mt-1 whitespace-pre-wrap text-xs font-semibold text-text-secondary">{comment.content}</p></div>)}</div><div className="mt-3 flex items-end gap-2"><textarea value={commentDraft} onChange={(event) => onCommentDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); onComment(); } }} placeholder="제출에 대한 댓글을 남겨주세요." rows={1} className="ui-input min-h-9 flex-1 py-2 text-xs" /><button type="button" onClick={onComment} disabled={busy || !commentDraft.trim()} className="ui-icon-button-brand h-9 w-9 disabled:opacity-40">{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}</button></div></div>}</section>;
+  return <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+    <h3 className="flex items-center gap-2 text-sm font-black text-text-primary"><MessageCircle className="size-4 text-brand-primary" />제출 댓글</h3>
+    <textarea value={submissionText} onChange={(event) => onSubmissionText(event.target.value)} placeholder="이 챌린지의 구현 내용과 결과를 댓글로 제출하세요." className="ui-input mt-3 min-h-24 py-2 text-sm" />
+    <div className="mt-3 flex justify-end"><button type="button" onClick={onSubmit} disabled={busy || !submissionText.trim()} className="rounded-md bg-brand-primary px-4 py-2 text-xs font-black text-text-on-brand disabled:opacity-40">{submission ? "제출 수정" : "제출"}</button></div>
+    {submission && <div className="mt-4 border-t border-surface-border-soft pt-4">
+      <div className="space-y-2">{comments.map((comment) => <div key={comment.id} className="rounded-md bg-surface-muted px-3 py-2"><div className="flex items-center gap-2 text-[10px] font-black text-text-muted"><span className="text-text-primary">{comment.authorName}</span><span>{new Date(comment.createdAt).toLocaleString("ko-KR")}</span></div><p className="mt-1 whitespace-pre-wrap text-xs font-semibold text-text-secondary">{comment.content}</p></div>)}</div>
+      <div className="mt-3 flex items-end gap-2"><textarea value={commentDraft} onChange={(event) => onCommentDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); onComment(); } }} placeholder="제출 댓글에 답글을 남겨주세요." rows={1} className="ui-input min-h-9 flex-1 py-2 text-xs" /><button type="button" onClick={onComment} disabled={busy || !commentDraft.trim()} className="ui-icon-button-brand h-9 w-9 disabled:opacity-40">{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}</button></div>
+    </div>}
+  </section>;
 }
 
 function DocumentDialog({ value, busy, onChange, onClose, onSave }: { value: CreateDocumentForm; busy: boolean; onChange: (value: CreateDocumentForm) => void; onClose: () => void; onSave: () => void }) {
-  return <div className="fixed inset-0 z-[80] grid place-items-center bg-black/50 p-6"><div className="w-full max-w-2xl rounded-lg border border-surface-border bg-surface-raised p-5 shadow-2xl"><div className="flex items-center justify-between"><h2 className="text-base font-black text-text-primary">챌린지 문서 추가</h2><button type="button" onClick={onClose} className="ui-icon-button h-8 w-8"><X className="size-4" /></button></div><div className="mt-4 space-y-3"><input value={value.title} onChange={(event) => onChange({ ...value, title: event.target.value })} placeholder="문서 제목" className="ui-input h-10 text-sm" autoFocus /><input value={value.summary} onChange={(event) => onChange({ ...value, summary: event.target.value })} placeholder="한 줄 요약" className="ui-input h-10 text-sm" /><textarea value={value.content} onChange={(event) => onChange({ ...value, content: event.target.value })} placeholder="과제 설명과 요구사항" className="ui-input min-h-36 py-2 text-sm" /><textarea value={value.checklist} onChange={(event) => onChange({ ...value, checklist: event.target.value })} placeholder={"완료 조건을 줄 단위로 입력하세요.\n예: 모바일 화면에서도 정상 동작한다"} className="ui-input min-h-24 py-2 text-sm" /></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-md px-4 py-2 text-xs font-black text-text-secondary">취소</button><button type="button" onClick={onSave} disabled={busy || !value.title.trim()} className="rounded-md bg-brand-primary px-4 py-2 text-xs font-black text-text-on-brand disabled:opacity-40">저장</button></div></div></div>;
+  return <div className="fixed inset-0 z-[80] grid place-items-center bg-black/50 p-6"><div className="w-full max-w-2xl rounded-lg border border-surface-border bg-surface-raised p-5 shadow-2xl"><div className="flex items-center justify-between"><h2 className="text-base font-black text-text-primary">챌린지 추가</h2><button type="button" onClick={onClose} className="ui-icon-button h-8 w-8"><X className="size-4" /></button></div><div className="mt-4 space-y-3"><input value={value.title} onChange={(event) => onChange({ ...value, title: event.target.value })} placeholder="챌린지 제목" className="ui-input h-10 text-sm" autoFocus /><textarea value={value.content} onChange={(event) => onChange({ ...value, content: event.target.value })} placeholder="챌린지 내용을 입력하세요." className="ui-input min-h-36 py-2 text-sm" /></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-md px-4 py-2 text-xs font-black text-text-secondary">취소</button><button type="button" onClick={onSave} disabled={busy || !value.title.trim()} className="rounded-md bg-brand-primary px-4 py-2 text-xs font-black text-text-on-brand disabled:opacity-40">저장</button></div></div></div>;
 }
 
 export default ChallengePlaybookModule;
