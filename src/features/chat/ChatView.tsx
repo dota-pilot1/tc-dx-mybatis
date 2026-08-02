@@ -146,8 +146,8 @@ function PinIcon({ size = 15 }: { size?: number }) {
 function ClipIcon() {
   return (
     <svg
-      width="18"
-      height="18"
+      width="22"
+      height="22"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -941,7 +941,7 @@ function ChatView({
             disabled={uploading || sending}
             title="이미지 첨부"
             aria-label="이미지 첨부"
-            className="shrink-0 w-10 h-10 rounded-[10px] text-text-muted hover:text-brand-primary hover:bg-surface-muted"
+            className="shrink-0 w-11 h-10 rounded-[10px] text-text-secondary hover:text-brand-primary hover:bg-surface-muted"
           >
             <ClipIcon />
           </Button>
