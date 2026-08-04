@@ -1,11 +1,11 @@
 import type { EditorThemeClasses } from 'lexical'
 
 export const editorTheme: EditorThemeClasses = {
-  paragraph: 'mb-3 text-text-primary',
+  paragraph: 'mb-4 leading-7 text-text-primary',
   heading: {
-    h1: 'text-2xl font-bold mt-4 mb-4 text-text-primary',
-    h2: 'text-xl font-bold mt-4 mb-3 text-text-primary',
-    h3: 'text-lg font-semibold mt-3 mb-2 text-text-primary',
+    h1: 'mt-5 mb-4 border-b border-surface-border-soft pb-2 text-2xl font-bold text-text-primary',
+    h2: 'mt-5 mb-3 text-xl font-bold text-text-primary',
+    h3: 'mt-4 mb-2 text-lg font-semibold text-text-primary',
   },
   quote: 'border-l-4 border-brand-border pl-4 italic text-text-secondary my-2',
   text: {

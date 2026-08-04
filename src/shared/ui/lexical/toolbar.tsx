@@ -219,7 +219,7 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
   if (variant === 'simple') {
     return (
       <div
-        className={`flex flex-wrap items-center gap-1 border-b border-surface-border-soft bg-surface-muted px-3 py-2 ${className ?? ''}`}
+        className={`lexical-toolbar flex flex-wrap items-center gap-1 border-b border-surface-border-soft bg-surface-muted px-3 py-2 ${className ?? ''}`}
       >
         <ToolbarButton onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} disabled={!canUndo} title="실행 취소">
           <Undo className="size-3.5" />
@@ -271,7 +271,7 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-1 border-b border-surface-border-soft bg-surface-muted px-3 py-2 ${className ?? ''}`}
+      className={`lexical-toolbar flex flex-wrap items-center gap-1 border-b border-surface-border-soft bg-surface-muted px-3 py-2 ${className ?? ''}`}
     >
       <ToolbarButton onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} disabled={!canUndo} title="실행 취소">
         <Undo className="size-3.5" />

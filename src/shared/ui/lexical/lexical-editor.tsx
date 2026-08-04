@@ -274,24 +274,24 @@ export function LexicalEditor({
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className={`flex flex-col bg-surface-raised ${readOnly ? 'lexical-editor-readonly' : ''}`}>
+      <div className={`lexical-editor flex flex-col bg-surface-raised ${readOnly ? 'lexical-editor-readonly' : ''}`}>
         {readOnly ? null : (
           <LexicalToolbar
             onImageUpload={toolbarVariant === 'full' ? uploadImageToS3 : undefined}
             variant={toolbarVariant}
           />
         )}
-        <div className="relative">
+        <div className="lexical-editor-content relative">
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="px-5 py-5 text-sm leading-relaxed text-text-primary outline-none"
+                className="lexical-editor-input px-6 py-6 text-[15px] leading-7 text-text-primary outline-none"
                 style={{ minHeight }}
               />
             }
             placeholder={
               readOnly ? null : (
-                <div className="absolute top-4 left-5 text-sm text-text-muted pointer-events-none">
+                <div className="lexical-editor-placeholder pointer-events-none absolute left-6 top-5 text-[15px] text-text-muted">
                   {placeholder}
                 </div>
               )
