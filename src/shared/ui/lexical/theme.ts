@@ -1,7 +1,9 @@
 import type { EditorThemeClasses } from 'lexical'
 
 export const editorTheme: EditorThemeClasses = {
-  paragraph: 'mb-4 leading-7 text-text-primary',
+  // Pasted plain text often contains blank paragraphs between lines.
+  // Keep paragraph spacing compact so those blank lines do not create oversized gaps.
+  paragraph: 'mb-1 leading-7 text-text-primary',
   heading: {
     h1: 'mt-5 mb-4 border-b border-surface-border-soft pb-2 text-2xl font-bold text-text-primary',
     h2: 'mt-5 mb-3 text-xl font-bold text-text-primary',

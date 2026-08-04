@@ -131,8 +131,8 @@ const ALL_APP_MODULES: AppModuleDefinition[] = [
   },
   {
     id: "apiexcel",
-    label: "Excel",
-    description: "프로젝트별 API Excel 원본 문서를 관리합니다.",
+    label: "API Documents",
+    description: "프로젝트별 API 문서와 Excel 원본 파일을 관리합니다.",
     icon: FileSpreadsheet,
     ready: true,
   },

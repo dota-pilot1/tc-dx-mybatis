@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, MessageCircle, Reply, Send, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageCircle, Pencil, Reply, Send, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LexicalEditor } from "./lexical/lexical-editor";
 
@@ -12,12 +12,16 @@ export default function DocumentDrawer({
   previous,
   next,
   onNavigate,
+  onEdit,
+  onDelete,
   onClose,
 }: {
   document: DrawerDocument;
   previous?: DrawerDocument;
   next?: DrawerDocument;
   onNavigate: (document: DrawerDocument) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onClose: () => void;
 }) {
   const [comments, setComments] = useState<Comment[]>([]);
@@ -47,9 +51,13 @@ export default function DocumentDrawer({
     <aside className="absolute inset-y-0 right-0 z-10 flex w-full max-w-[820px] flex-col border-l border-surface-border bg-surface-raised shadow-2xl">
       <header className="flex items-center gap-2 border-b border-surface-border px-5 py-4">
         <div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[0.14em] text-brand-primary">문서 보기</p><h2 className="truncate text-lg font-black text-text-primary">{document.title}</h2></div>
-        {(previous || next) && <div className="flex shrink-0 items-center gap-2 border-l border-surface-border-soft pl-4">
+        {(previous || next) && <nav className="flex shrink-0 items-center gap-2 border-l border-surface-border-soft pl-4" aria-label="문서 이동">
           {previous && <button type="button" onClick={() => onNavigate(previous)} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-surface-border px-2.5 text-xs font-black text-text-secondary hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary" title="이전 문서"><ChevronLeft className="size-4" />이전</button>}
           {next && <button type="button" onClick={() => onNavigate(next)} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-surface-border px-2.5 text-xs font-black text-text-secondary hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary" title="다음 문서">다음<ChevronRight className="size-4" /></button>}
+        </nav>}
+        {(onEdit || onDelete) && <div className="flex shrink-0 items-center gap-2 border-l border-surface-border-soft pl-4" aria-label="문서 작업">
+          {onEdit && <button type="button" onClick={onEdit} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-2.5 text-xs font-black text-brand-primary hover:bg-surface-raised" title="문서 수정"><Pencil className="size-3.5" />수정</button>}
+          {onDelete && <button type="button" onClick={onDelete} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--destructive)]/30 px-2.5 text-xs font-black text-[var(--destructive)] hover:bg-danger-glass" title="문서 삭제"><Trash2 className="size-3.5" />삭제</button>}
         </div>}
         <button type="button" onClick={onClose} className="ui-icon-button ml-2 h-9 w-9 shrink-0" title="닫기"><X className="size-4" /></button>
       </header>

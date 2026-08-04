@@ -433,7 +433,7 @@ function ArchitecturePlaybookModule() {
                     <InlineTitleRow
                       key={item.id}
                       title={item.title}
-                      icon
+                      number={index + 1}
                       active={item.id === document?.id}
                       busy={busy}
                       onOpen={() => {
@@ -502,6 +502,16 @@ function ArchitecturePlaybookModule() {
           onNavigate={(nextDocument) => {
             setDocumentId(nextDocument.id);
             setDetail(nextDocument);
+          }}
+          onEdit={() => {
+            const target = detail;
+            setDetail(null);
+            openDocumentDialog({ mode: "edit", target });
+          }}
+          onDelete={() => {
+            const target = detail;
+            setDetail(null);
+            openDocumentDialog({ mode: "delete", target });
           }}
           onClose={() => setDetail(null)}
         />
@@ -612,6 +622,7 @@ function Panel({
 }
 function InlineTitleRow({
   title,
+  number,
   active,
   icon,
   busy,
@@ -622,6 +633,7 @@ function InlineTitleRow({
   extraActions,
 }: {
   title: string;
+  number?: number;
   active?: boolean;
   icon?: boolean;
   busy: boolean;
@@ -707,6 +719,14 @@ function InlineTitleRow({
         <>
           {onOpen ? (
             <div className="flex min-w-0 flex-1 items-center gap-2 p-1">
+              {number !== undefined && (
+                <span
+                  className="grid size-6 shrink-0 place-items-center rounded-md border border-surface-border-soft bg-surface-raised text-[11px] font-black text-text-muted"
+                  aria-label={`${number}번 문서`}
+                >
+                  {number}
+                </span>
+              )}
               {icon && (
                 <FileText className="size-3.5 shrink-0 text-brand-primary" />
               )}
@@ -720,6 +740,14 @@ function InlineTitleRow({
               onClick={onClick}
               className="flex min-w-0 flex-1 items-center gap-2 p-1 text-left"
             >
+              {number !== undefined && (
+                <span
+                  className="grid size-6 shrink-0 place-items-center rounded-md border border-surface-border-soft bg-surface-raised text-[11px] font-black text-text-muted"
+                  aria-label={`${number}번 항목`}
+                >
+                  {number}
+                </span>
+              )}
               {icon && (
                 <FileText className="size-3.5 shrink-0 text-brand-primary" />
               )}
@@ -815,6 +843,7 @@ function DocumentDialog({
   const deleting = state.mode === "delete";
   return (
     <DialogFrame
+      contentClassName="flex min-h-0 flex-1 flex-col"
       title={
         deleting
           ? "Lexical 문서 삭제"
@@ -837,11 +866,13 @@ function DocumentDialog({
               autoFocus
             />
           </label>
-          <div className="lexical-editor-frame mt-4">
+          <div className="lexical-editor-frame mt-4 min-h-0 flex-1">
             <LexicalEditor
               initialState={body}
               onChange={onBody}
               minHeight="420px"
+              height="min(520px, calc(100vh - 18rem))"
+              scrollable
             />
           </div>
         </>
@@ -894,15 +925,17 @@ function Actions({
 function DialogFrame({
   title,
   onClose,
+  contentClassName = "",
   children,
 }: {
   title: string;
   onClose: () => void;
+  contentClassName?: string;
   children: ReactNode;
 }) {
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-[color-mix(in_srgb,var(--background)_72%,transparent)] p-4">
-      <div className="w-full max-w-3xl rounded-xl border border-surface-border bg-surface-raised p-5 shadow-2xl">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised p-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-black text-text-primary">{title}</h2>
           <button
@@ -913,7 +946,7 @@ function DialogFrame({
             <X className="size-4" />
           </button>
         </div>
-        <div className="mt-5">{children}</div>
+        <div className={`mt-5 min-h-0 ${contentClassName}`}>{children}</div>
       </div>
     </div>
   );

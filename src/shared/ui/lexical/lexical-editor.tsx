@@ -34,6 +34,8 @@ type LexicalEditorProps = {
   onChange: (state: string) => void
   placeholder?: string
   minHeight?: string
+  height?: string
+  scrollable?: boolean
   readOnly?: boolean
   toolbarVariant?: 'full' | 'simple'
 }
@@ -221,6 +223,8 @@ export function LexicalEditor({
   onChange,
   placeholder = '내용을 입력하세요...',
   minHeight = '200px',
+  height,
+  scrollable = false,
   readOnly = false,
   toolbarVariant = 'full',
 }: LexicalEditorProps) {
@@ -274,14 +278,19 @@ export function LexicalEditor({
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className={`lexical-editor flex flex-col bg-surface-raised ${readOnly ? 'lexical-editor-readonly' : ''}`}>
+      <div
+        className={`lexical-editor flex min-h-0 flex-col bg-surface-raised ${readOnly ? 'lexical-editor-readonly' : ''}`}
+        style={height ? { height } : undefined}
+      >
         {readOnly ? null : (
           <LexicalToolbar
             onImageUpload={toolbarVariant === 'full' ? uploadImageToS3 : undefined}
             variant={toolbarVariant}
           />
         )}
-        <div className="lexical-editor-content relative">
+        <div
+          className={`lexical-editor-content relative ${scrollable ? 'min-h-0 flex-1 overflow-y-auto' : ''}`}
+        >
           <RichTextPlugin
             contentEditable={
               <ContentEditable
