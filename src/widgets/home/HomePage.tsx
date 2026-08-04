@@ -2,6 +2,7 @@ import { ArrowRight, type LucideIcon } from "lucide-react";
 import type { User } from "../../entities/user";
 import PageHeader from "../../shared/ui/PageHeader";
 import assemblyIllustration from "../../assets/towercrane-prototype-assembly.png";
+import { APP_PROFILE } from "../../shared/config/app-profile";
 
 export type HomeModule = {
   id: string;
@@ -25,7 +26,7 @@ function HomePage({ user, modules, onOpen }: Props) {
           🏗️
         </span>
         <span className="text-[14px] font-bold tracking-tight text-text-primary">
-          Towercrane Project
+          {APP_PROFILE.displayName}
         </span>
       </PageHeader>
 

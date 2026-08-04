@@ -4226,8 +4226,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "tc-toolkit-for-commerce"
-version = "0.1.8"
+name = "tc-dx-mybatis"
+version = "0.1.9"
 dependencies = [
  "serde",
  "serde_json",

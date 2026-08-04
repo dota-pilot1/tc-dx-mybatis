@@ -12,7 +12,10 @@ import PrototypeNoteModule from "../prototype-note/PrototypeNoteModule";
 import TestingModule from "../testing/TestPlaybookModule";
 import AxPlaybookModule from "../ax/AxPlaybookModule";
 import DevopsPlaybookModule from "../devops/DevopsPlaybookModule";
+import CicdPlaybookModule from "../cicd/CicdPlaybookModule";
 import ArchitecturePlaybookModule from "../architecture/ArchitecturePlaybookModule";
+import ApiDocModule from "../apidoc/ApiDocModule";
+import ApiExcelModule from "../api-excel/ApiExcelModule";
 import CommercePlaybookModule from "../commerce/CommercePlaybookModule";
 import DbPlaybookModule from "../db/DbPlaybookModule";
 import SqlPlaybookModule from "../sql/SqlPlaybookModule";
@@ -27,6 +30,7 @@ import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 import { getRailTheme } from "../../shared/lib/rail-themes";
 import { useAppUpdate } from "../../shared/lib/useAppUpdate";
 import { APP_MODULES, isAppModuleId, type AppModuleId } from "../../shared/config/app-modules";
+import { APP_PROFILE } from "../../shared/config/app-profile";
 
 type Props = {
   user: User;
@@ -187,7 +191,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           </button>
           {appVersion && (
             <span
-              title={`Commerce Toolkit v${appVersion}`}
+              title={`${APP_PROFILE.displayName} v${appVersion}`}
               className="max-h-3 select-none overflow-hidden text-[9px] font-bold tabular-nums text-[color-mix(in_srgb,var(--primary-foreground)_85%,transparent)]"
             >
               v{appVersion}
@@ -338,8 +342,14 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <AxPlaybookModule />
         ) : active === "devops" ? (
           <DevopsPlaybookModule />
+        ) : active === "cicd" ? (
+          <CicdPlaybookModule />
         ) : active === "architecture" ? (
           <ArchitecturePlaybookModule />
+        ) : active === "apidoc" ? (
+          <ApiDocModule isAdmin={user.role === "admin"} />
+        ) : active === "apiexcel" ? (
+          <ApiExcelModule isAdmin={user.role === "admin"} />
         ) : active === "commerce" ? (
           <CommercePlaybookModule />
         ) : active === "db" ? (

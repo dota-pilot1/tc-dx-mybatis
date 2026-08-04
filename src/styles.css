@@ -170,13 +170,39 @@
   }
 }
 
-@media (min-width: 80rem) {
+@media (min-width: 64rem) {
   .prototype-topic-layout {
     grid-template-columns: minmax(320px, var(--prototype-topic-width, 350px)) 3px minmax(
         0,
         1fr
       );
   }
+}
+
+/* Architecture Playbook: desktop에서 두 탐색 컬럼을 독립적으로 조절한다. */
+.architecture-playbook-layout {
+  display: flex;
+  flex-direction: row;
+}
+
+.architecture-playbook-layout > .architecture-playbook-column,
+.architecture-playbook-layout > .architecture-playbook-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.architecture-playbook-layout > .architecture-playbook-category { width: var(--architecture-category-width, 400px); flex: 0 0 var(--architecture-category-width, 400px); }
+.architecture-playbook-layout > .architecture-playbook-topic { width: var(--architecture-topic-width, 400px); flex: 0 0 var(--architecture-topic-width, 400px); }
+.architecture-playbook-layout > .architecture-playbook-content { flex: 1 1 auto; }
+@media (max-width: 63.99rem) {
+  .architecture-playbook-layout { flex-direction: column; }
+  .architecture-playbook-layout > .architecture-playbook-category,
+  .architecture-playbook-layout > .architecture-playbook-topic,
+  .architecture-playbook-layout > .architecture-playbook-content { width: 100%; flex: 0 0 auto; }
+}
+
+@media (max-width: 63.99rem) {
+  .architecture-playbook-layout > [role="separator"] { display: none; }
 }
 
 /* FullCalendar는 런타임 DOM을 생성하므로 semantic CSS 변수로 직접 테마를 연결한다. */
@@ -389,3 +415,5 @@ body {
     display: none;
   }
 }
+
+

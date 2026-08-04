@@ -5,7 +5,9 @@ import {
   Component,
   Database,
   Bug,
+  FileSpreadsheet,
   FileText,
+  FlaskConical,
   GitBranch,
   GraduationCap,
   Layers3,
@@ -17,6 +19,7 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
+import { APP_PROFILE } from "./app-profile";
 
 export type AppModuleId =
   | "prototype"
@@ -27,7 +30,10 @@ export type AppModuleId =
   | "testing"
   | "tutoring"
   | "devops"
+  | "cicd"
   | "architecture"
+  | "apidoc"
+  | "apiexcel"
   | "commerce"
   | "db"
   | "sql"
@@ -45,7 +51,7 @@ export type AppModuleDefinition = {
   ready: boolean;
 };
 
-export const APP_MODULES: AppModuleDefinition[] = [
+const ALL_APP_MODULES: AppModuleDefinition[] = [
   {
     id: "prototype",
     label: "프로토타입",
@@ -103,10 +109,31 @@ export const APP_MODULES: AppModuleDefinition[] = [
     ready: true,
   },
   {
+    id: "cicd",
+    label: "CI/CD Playbook",
+    description: "소스·빌드·테스트·릴리즈·배포·롤백 절차를 문서로 정리합니다.",
+    icon: GitBranch,
+    ready: true,
+  },
+  {
     id: "architecture",
     label: "Architecture Playbook",
     description: "프론트엔드·백엔드 아키텍처와 FSD·DDD 설계를 문서로 정리합니다.",
     icon: Layers3,
+    ready: true,
+  },
+  {
+    id: "apidoc",
+    label: "Postman",
+    description: "워크스페이스별 API 요청을 관리하고 직접 테스트합니다.",
+    icon: FlaskConical,
+    ready: true,
+  },
+  {
+    id: "apiexcel",
+    label: "Excel",
+    description: "프로젝트별 API Excel 원본 문서를 관리합니다.",
+    icon: FileSpreadsheet,
     ready: true,
   },
   {
@@ -166,6 +193,11 @@ export const APP_MODULES: AppModuleDefinition[] = [
     ready: true,
   },
 ];
+
+export const APP_MODULES = ALL_APP_MODULES
+  .filter((module) => APP_PROFILE.moduleIds.includes(module.id))
+  .sort((a, b) => APP_PROFILE.moduleIds.indexOf(a.id) - APP_PROFILE.moduleIds.indexOf(b.id))
+  .map((module) => ({ ...module, label: APP_PROFILE.moduleLabels[module.id] ?? module.label }));
 
 export const DEFAULT_MODULE_ORDER = APP_MODULES.map((module) => module.id);
 

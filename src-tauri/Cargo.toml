@@ -1,12 +1,12 @@
 [package]
-name = "tc-toolkit-for-commerce"
-version = "0.1.8"
+name = "tc-dx-mybatis"
+version = "0.1.9"
 description = "커머스 개발 툴킷 앱"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "tc_toolkit_for_commerce_lib"
+name = "tc_dx_mybatis_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

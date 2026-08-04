@@ -6,8 +6,9 @@ import {
   type AppModuleId,
 } from "../config/app-modules";
 import { DEFAULT_RAIL_THEME, type RailThemeId } from "./rail-themes";
+import { APP_PROFILE } from "../config/app-profile";
 
-const MENU_ORDER_VERSION = 3;
+const MENU_ORDER_VERSION = 6;
 
 type AppSettingsState = {
   menuOrderVersion: number;
@@ -17,6 +18,8 @@ type AppSettingsState = {
   hiddenModuleIds: AppModuleId[];
   apiDocCategoryWidth: number;
   apiDocEndpointWidth: number;
+  apiExcelProjectWidth: number;
+  apiExcelCategoryWidth: number;
   archNoteTopicWidth: number;
   archNoteSectionWidth: number;
   planningDesignTopicWidth: number;
@@ -39,6 +42,8 @@ type AppSettingsState = {
   resetModulePreferences: () => void;
   setApiDocCategoryWidth: (width: number) => void;
   setApiDocEndpointWidth: (width: number) => void;
+  setApiExcelProjectWidth: (width: number) => void;
+  setApiExcelCategoryWidth: (width: number) => void;
   setArchNoteTopicWidth: (width: number) => void;
   setArchNoteSectionWidth: (width: number) => void;
   setPlanningDesignTopicWidth: (width: number) => void;
@@ -58,13 +63,32 @@ type AppSettingsState = {
 
 function normalizeModuleOrder(
   moduleIds: AppModuleId[],
-) {
+): AppModuleId[] {
   return [
     ...new Set([
       ...moduleIds.filter((id) => isAppModuleId(id)),
       ...DEFAULT_MODULE_ORDER,
     ]),
   ];
+}
+
+function migrateModuleOrder(moduleIds: AppModuleId[], savedVersion = 0): AppModuleId[] {
+  let normalized = normalizeModuleOrder(moduleIds);
+  if (savedVersion < 4 && normalized.includes("apidoc")) {
+    const withoutPostman = normalized.filter((id) => id !== "apidoc");
+    const chatIndex = withoutPostman.indexOf("chat");
+    normalized = chatIndex < 0
+      ? [...withoutPostman, "apidoc"]
+      : [...withoutPostman.slice(0, chatIndex), "apidoc", ...withoutPostman.slice(chatIndex)];
+  }
+  if (savedVersion < 6 && normalized.includes("cicd")) {
+    const withoutCicd = normalized.filter((id) => id !== "cicd");
+    const chatIndex = withoutCicd.indexOf("chat");
+    normalized = chatIndex < 0
+      ? [...withoutCicd, "cicd"]
+      : [...withoutCicd.slice(0, chatIndex), "cicd", ...withoutCicd.slice(chatIndex)];
+  }
+  return normalized;
 }
 
 export const useAppSettingsStore = create<AppSettingsState>()(
@@ -77,6 +101,8 @@ export const useAppSettingsStore = create<AppSettingsState>()(
       hiddenModuleIds: [],
       apiDocCategoryWidth: 224, // w-56
       apiDocEndpointWidth: 256, // w-64
+      apiExcelProjectWidth: 300,
+      apiExcelCategoryWidth: 320,
       archNoteTopicWidth: 224, // w-56 (1차 주제)
       archNoteSectionWidth: 224, // w-56 (2차 주제)
       planningDesignTopicWidth: 224, // w-56 (1차 주제)
@@ -113,6 +139,8 @@ export const useAppSettingsStore = create<AppSettingsState>()(
         }),
       setApiDocCategoryWidth: (width) => set({ apiDocCategoryWidth: width }),
       setApiDocEndpointWidth: (width) => set({ apiDocEndpointWidth: width }),
+      setApiExcelProjectWidth: (width) => set({ apiExcelProjectWidth: width }),
+      setApiExcelCategoryWidth: (width) => set({ apiExcelCategoryWidth: width }),
       setArchNoteTopicWidth: (width) => set({ archNoteTopicWidth: width }),
       setArchNoteSectionWidth: (width) => set({ archNoteSectionWidth: width }),
       setPlanningDesignTopicWidth: (width) =>
@@ -139,7 +167,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
       setStudyDiarySectionWidth: (width) => set({ studyDiarySectionWidth: width }),
     }),
     {
-      name: "tc-commerce-toolkit.appSettings",
+      name: APP_PROFILE.settingsStorageKey,
       merge: (persisted, current) => {
         const saved = persisted as Partial<AppSettingsState> | undefined;
         return {
@@ -151,8 +179,9 @@ export const useAppSettingsStore = create<AppSettingsState>()(
             saved.projectScheduleDetailWidth >= 640
               ? saved.projectScheduleDetailWidth
               : current.projectScheduleDetailWidth,
-          moduleOrder: normalizeModuleOrder(
+          moduleOrder: migrateModuleOrder(
             saved?.moduleOrder ?? current.moduleOrder,
+            saved?.menuOrderVersion,
           ),
           hiddenModuleIds:
             saved?.hiddenModuleIds?.filter(isAppModuleId) ??

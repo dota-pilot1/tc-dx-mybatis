@@ -15,9 +15,9 @@ export function ColumnResizeHandle({
       aria-orientation="vertical"
       title={title}
       onMouseDown={onMouseDown}
-      className="group relative z-10 -ml-1 w-2 shrink-0 cursor-col-resize select-none"
+      className="group relative z-10 block w-3 shrink-0 cursor-col-resize select-none"
     >
-      <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-brand-primary" />
+      <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-surface-border-soft transition-colors group-hover:bg-brand-primary" />
     </div>
   );
 }
