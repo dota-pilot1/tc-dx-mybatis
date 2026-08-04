@@ -67,7 +67,7 @@ function readStoredWidth(
     : fallback;
 }
 
-function ArchitecturePlaybookModule() {
+function MybatisPlaybookModule() {
   const [categories, setCategories] = useState<ArchitecturePlaybookCategory[]>(
     [],
   );
@@ -436,6 +436,10 @@ function ArchitecturePlaybookModule() {
                       number={index + 1}
                       active={item.id === document?.id}
                       busy={busy}
+                      onRowClick={() => {
+                        setDocumentId(item.id);
+                        setDetail(null);
+                      }}
                       onOpen={() => {
                         setDocumentId(item.id);
                         setDetail(item);
@@ -627,6 +631,7 @@ function InlineTitleRow({
   icon,
   busy,
   onClick,
+  onRowClick,
   onOpen,
   onSave,
   onDelete,
@@ -638,6 +643,7 @@ function InlineTitleRow({
   icon?: boolean;
   busy: boolean;
   onClick?: () => void;
+  onRowClick?: () => void;
   onOpen?: () => void;
   onSave: (nextTitle: string) => Promise<void>;
   onDelete: () => void;
@@ -680,7 +686,8 @@ function InlineTitleRow({
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-md p-2.5 ${active ? "bg-brand-glass" : "bg-surface-muted"}`}
+      onClick={onRowClick && !editing && !busy ? onRowClick : undefined}
+      className={`flex items-center gap-2 rounded-md p-2.5 ${active ? "bg-brand-glass" : "bg-surface-muted"} ${onRowClick ? "cursor-pointer" : ""}`}
     >
       {editing ? (
         <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -756,22 +763,6 @@ function InlineTitleRow({
               </span>
             </button>
           )}
-          {extraActions}
-          {onOpen && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpen();
-              }}
-              disabled={busy}
-              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2.5 text-xs font-black text-brand-primary transition-colors hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border/40 disabled:opacity-40"
-              title="문서 열기"
-            >
-              <span>열기</span>
-              <ChevronRight className="size-3.5" />
-            </button>
-          )}
           <button
             type="button"
             onClick={startEditing}
@@ -793,6 +784,24 @@ function InlineTitleRow({
           >
             <Trash2 className="size-3.5" />
           </button>
+          {extraActions && (
+            <div onClick={(event) => event.stopPropagation()}>{extraActions}</div>
+          )}
+          {onOpen && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen();
+              }}
+              disabled={busy}
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2.5 text-xs font-black text-brand-primary transition-colors hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border/40 disabled:opacity-40"
+              title="문서 열기"
+            >
+              <span>열기</span>
+              <ChevronRight className="size-3.5" />
+            </button>
+          )}
         </>
       )}
     </div>
@@ -1006,4 +1015,4 @@ function DetailDialog({
   );
 }
 
-export default ArchitecturePlaybookModule;
+export default MybatisPlaybookModule;

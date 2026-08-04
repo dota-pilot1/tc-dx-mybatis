@@ -13,13 +13,23 @@ import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode'
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin'
-import { TRANSFORMERS } from '@lexical/markdown'
+import { ORDERED_LIST, TRANSFORMERS } from '@lexical/markdown'
 import { CodeNode, CodeHighlightNode, registerCodeHighlighting } from '@lexical/code'
 import { HeadingNode, QuoteNode } from '@lexical/rich-text'
-import { ListNode, ListItemNode } from '@lexical/list'
+import { $isListItemNode, $isListNode, ListNode, ListItemNode } from '@lexical/list'
 import { LinkNode } from '@lexical/link'
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table'
-import { type EditorState } from 'lexical'
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getSelection,
+  $isRangeSelection,
+  COMMAND_PRIORITY_HIGH,
+  KEY_BACKSPACE_COMMAND,
+  type EditorState,
+} from 'lexical'
+import { $findMatchingParent } from '@lexical/utils'
+import { $isCodeNode } from '@lexical/code'
 import { editorTheme } from './theme'
 import { LexicalToolbar } from './toolbar'
 import { ImageNode } from './nodes/image-node'
@@ -47,6 +57,12 @@ type SerializedLexicalNode = {
   children?: SerializedLexicalNode[]
 }
 
+// Number prefixes such as `1. ` remain plain text while typing.
+// Numbered lists are still available through the toolbar button.
+const MARKDOWN_TRANSFORMERS = TRANSFORMERS.filter(
+  (transformer) => transformer !== ORDERED_LIST,
+)
+
 export type MermaidBlock = {
   id: string
   source: string
@@ -55,6 +71,107 @@ export type MermaidBlock = {
 function CodeHighlightPlugin() {
   const [editor] = useLexicalComposerContext()
   useEffect(() => registerCodeHighlighting(editor), [editor])
+  return null
+}
+
+function CodeBlockBackspacePlugin() {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(
+    () =>
+      editor.registerCommand(
+        KEY_BACKSPACE_COMMAND,
+        (event) => {
+          const selection = $getSelection()
+          if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false
+
+          const anchorNode = selection.anchor.getNode()
+          const codeNode = $isCodeNode(anchorNode)
+            ? anchorNode
+            : $findMatchingParent(anchorNode, $isCodeNode)
+
+          if (!codeNode || !codeNode.isEmpty()) return false
+
+          event.preventDefault()
+          editor.update(() => {
+            const paragraph = $createParagraphNode()
+            codeNode.replace(paragraph)
+            paragraph.select()
+          })
+          return true
+        },
+        COMMAND_PRIORITY_HIGH,
+      ),
+    [editor],
+  )
+
+  return null
+}
+
+function CodeBlockMergePlugin() {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(
+    () =>
+      editor.registerNodeTransform(CodeNode, (codeNode) => {
+        const nextNode = codeNode.getNextSibling()
+        if (!$isCodeNode(nextNode) || codeNode.getLanguage() !== nextNode.getLanguage()) {
+          return
+        }
+
+        const nextChildren = nextNode.getChildren()
+        codeNode.append($createTextNode('\n'), ...nextChildren)
+        nextNode.remove()
+      }),
+    [editor],
+  )
+
+  return null
+}
+
+function OrderedListBackspacePlugin() {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(
+    () =>
+      editor.registerCommand(
+        KEY_BACKSPACE_COMMAND,
+        (event) => {
+          const selection = $getSelection()
+          if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false
+
+          const anchorNode = selection.anchor.getNode()
+          const listItem = $findMatchingParent(anchorNode, $isListItemNode)
+          const listNode = listItem?.getParent()
+          if (!listItem || !$isListNode(listNode) || listNode.getListType() !== 'number') {
+            return false
+          }
+
+          const firstChild = listItem.getFirstChild()
+          const firstDescendant = listItem.getFirstDescendant()
+          const atStart =
+            (firstDescendant?.is(anchorNode) && selection.anchor.offset === 0) ||
+            (firstChild?.is(anchorNode) && selection.anchor.offset === 0) ||
+            (listItem.is(anchorNode) && selection.anchor.offset === 0)
+          if (!atStart || !firstChild) return false
+
+          event.preventDefault()
+          const paragraph = $createParagraphNode()
+          listItem.getChildren().forEach((child) => paragraph.append(child))
+          if (listNode.getChildrenSize() === 1) {
+            listNode.replace(paragraph)
+          } else {
+            listNode.insertBefore(paragraph, listItem)
+            listItem.remove()
+          }
+          paragraph.selectStart()
+          return true
+        },
+        COMMAND_PRIORITY_HIGH,
+      ),
+    [editor],
+  )
+
   return null
 }
 
@@ -315,7 +432,10 @@ export function LexicalEditor({
         <HorizontalRulePlugin />
         <TablePlugin hasHorizontalScroll />
         <CodeHighlightPlugin />
-        {readOnly ? null : <MarkdownShortcutPlugin transformers={TRANSFORMERS} />}
+        {!readOnly ? <CodeBlockBackspacePlugin /> : null}
+        {!readOnly ? <CodeBlockMergePlugin /> : null}
+        {!readOnly ? <OrderedListBackspacePlugin /> : null}
+        {readOnly ? null : <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />}
         {readOnly ? null : <ImagePlugin />}
         {readOnly ? null : <DragDropImagePlugin onUpload={uploadImageToS3} />}
         {readOnly ? null : <YoutubePlugin />}

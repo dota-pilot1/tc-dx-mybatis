@@ -4,9 +4,12 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   $createParagraphNode,
   $createTextNode,
+  $findMatchingParent,
   $getRoot,
   $getSelection,
+  $isElementNode,
   $isRangeSelection,
+  INTERNAL_$isBlock,
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
   FORMAT_ELEMENT_COMMAND,
@@ -206,9 +209,24 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
   const formatCodeBlock = () => {
     editor.update(() => {
       const selection = $getSelection()
-      if ($isRangeSelection(selection)) {
-        $setBlocksType(selection, () => $createCodeNode())
+      if (!$isRangeSelection(selection)) return
+
+      const blocks = new Map<string, LexicalNode>()
+      for (const node of selection.getNodes()) {
+        const block = $findMatchingParent(node, INTERNAL_$isBlock)
+        if (block && $isElementNode(block)) blocks.set(block.getKey(), block)
       }
+
+      const blockNodes = [...blocks.values()]
+      if (blockNodes.length === 0) return
+
+      const codeNode = $createCodeNode()
+      codeNode.append($createTextNode(blockNodes.map((block) => block.getTextContent()).join('\n')))
+
+      const [firstBlock, ...remainingBlocks] = blockNodes
+      firstBlock.replace(codeNode)
+      remainingBlocks.forEach((block) => block.remove())
+      codeNode.selectEnd()
     })
   }
 
