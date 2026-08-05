@@ -25,7 +25,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlGQjgyNjNGMEFFNzMxRkQKUldUOU1lY0tQeWE0bis2ZlVpK1RtQjg2WHIvWTRVam8vNVhMUXliWVp2QkFnZFJIQ1BRMHZrQzEK",
       "endpoints": [
-        "https://github.com/dota-pilot1/tc-dx-mybatis/releases/latest/download/latest.json"
+        "https://github.com/dota-pilot1/tc-toolkit-for-commerce/releases/latest/download/latest.json"
       ]
     }
   },
