@@ -1,10 +1,26 @@
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Check,
   ChevronRight,
   CircleHelp,
   CloudCog,
   FileText,
   GitBranch,
+  GripVertical,
   Pencil,
   Plus,
   RefreshCw,
@@ -37,6 +53,9 @@ import {
   listArchitectureDocumentComments,
   listArchitecturePlaybook,
   moveArchitectureDocument,
+  reorderArchitectureCategories,
+  reorderArchitectureDocuments,
+  reorderArchitectureTopics,
   updateArchitectureDocumentComment,
   updateArchitectureCategory,
   updateArchitectureDocument,
@@ -125,6 +144,9 @@ function MybatisPlaybookModule() {
   );
   const [topicWidth, setTopicWidth] = useState(() =>
     readStoredWidth(TOPIC_WIDTH_KEY, 400, 320, 560),
+  );
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
   const category =
@@ -365,6 +387,75 @@ function MybatisPlaybookModule() {
     }
   }
 
+  async function saveCategoryOrder(nextCategories: ArchitecturePlaybookCategory[]) {
+    setCategories(nextCategories);
+    setBusy(true);
+    try {
+      await reorderArchitectureCategories(nextCategories.map((item) => item.id));
+      await load(category?.id, topic?.id, document?.id);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "MyBatis 영역 순서를 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveTopicOrder(nextTopics: ArchitecturePlaybookTopic[]) {
+    if (!category) return;
+    setCategories((current) => current.map((item) => item.id === category.id ? { ...item, topics: nextTopics } : item));
+    setBusy(true);
+    try {
+      await reorderArchitectureTopics(category.id, nextTopics.map((item) => item.id));
+      await load(category.id, topic?.id, document?.id);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "MyBatis 주제 순서를 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveDocumentOrder(nextDocuments: ArchitecturePlaybookDocument[], parentId: string | null) {
+    if (!topic) return;
+    setBusy(true);
+    try {
+      await reorderArchitectureDocuments(topic.id, nextDocuments.map((item) => item.id), parentId);
+      await load(category?.id, topic.id, document?.id);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "MyBatis 문서 순서를 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleCategoryDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id || busy) return;
+    const from = categories.findIndex((item) => item.id === active.id);
+    const to = categories.findIndex((item) => item.id === over.id);
+    if (from < 0 || to < 0) return;
+    void saveCategoryOrder(arrayMove(categories, from, to));
+  }
+
+  function handleTopicDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id || busy) return;
+    const from = topics.findIndex((item) => item.id === active.id);
+    const to = topics.findIndex((item) => item.id === over.id);
+    if (from < 0 || to < 0) return;
+    void saveTopicOrder(arrayMove(topics, from, to));
+  }
+
+  function handleDocumentDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id || busy || !topic) return;
+    const activeDocument = documents.find((item) => item.id === active.id);
+    const overDocument = documents.find((item) => item.id === over.id);
+    if (!activeDocument || !overDocument || (activeDocument.parentId ?? null) !== (overDocument.parentId ?? null)) return;
+    const parentId = activeDocument.parentId ?? null;
+    const siblings = documents.filter((item) => (item.parentId ?? null) === parentId);
+    const from = siblings.findIndex((item) => item.id === active.id);
+    const to = siblings.findIndex((item) => item.id === over.id);
+    if (from < 0 || to < 0) return;
+    void saveDocumentOrder(arrayMove(siblings, from, to), parentId);
+  }
+
   const layoutStyle = {
     "--architecture-category-width": `${categoryWidth}px`,
     "--architecture-topic-width": `${topicWidth}px`,
@@ -406,19 +497,31 @@ function MybatisPlaybookModule() {
             }
             onSubmit={() => void createInline("category")}
           >
-            {categories.map((item) => (
-              <InlineTitleRow
-                key={item.id}
-                title={item.title}
-                active={item.id === category?.id}
-                busy={busy}
-                onClick={() => void load(item.id)}
-                onSave={(nextTitle) =>
-                  saveInlineTitle("category", item, nextTitle)
-                }
-                onDelete={() => openDeleteTitleDialog(item, "category")}
-              />
-            ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleCategoryDragEnd}
+            >
+              <SortableContext
+                items={categories.map((item) => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {categories.map((item) => (
+                  <SortableInlineTitleRow
+                    key={item.id}
+                    sortableId={item.id}
+                    title={item.title}
+                    active={item.id === category?.id}
+                    busy={busy}
+                    onClick={() => void load(item.id)}
+                    onSave={(nextTitle) =>
+                      saveInlineTitle("category", item, nextTitle)
+                    }
+                    onDelete={() => openDeleteTitleDialog(item, "category")}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </Panel>
           <ColumnResizeHandle onMouseDown={resizeCategory} />
           <Panel
@@ -432,20 +535,32 @@ function MybatisPlaybookModule() {
             }
             onSubmit={category ? () => void createInline("topic") : undefined}
           >
-            {topics.map((item) => (
-              <InlineTitleRow
-                key={item.id}
-                title={item.title}
-                icon
-                active={item.id === topic?.id}
-                busy={busy}
-                onClick={() => void load(category?.id, item.id)}
-                onSave={(nextTitle) =>
-                  saveInlineTitle("topic", item, nextTitle)
-                }
-                onDelete={() => openDeleteTitleDialog(item, "topic")}
-              />
-            ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleTopicDragEnd}
+            >
+              <SortableContext
+                items={topics.map((item) => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {topics.map((item) => (
+                  <SortableInlineTitleRow
+                    key={item.id}
+                    sortableId={item.id}
+                    title={item.title}
+                    icon
+                    active={item.id === topic?.id}
+                    busy={busy}
+                    onClick={() => void load(category?.id, item.id)}
+                    onSave={(nextTitle) =>
+                      saveInlineTitle("topic", item, nextTitle)
+                    }
+                    onDelete={() => openDeleteTitleDialog(item, "topic")}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </Panel>
           <ColumnResizeHandle onMouseDown={resizeTopic} />
           <section className="architecture-playbook-content flex min-h-0 flex-col rounded-md border border-surface-border bg-surface-raised shadow-sm">
@@ -485,8 +600,17 @@ function MybatisPlaybookModule() {
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto p-5">
               {documentRows.length ? (
-                <div className="space-y-2">
-                  {documentRows.map(({ document: item, depth }, index) => {
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDocumentDragEnd}
+                >
+                  <SortableContext
+                    items={documentRows.map(({ document: item }) => item.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {documentRows.map(({ document: item, depth }, index) => {
                     const hasChildren = documents.some(
                       (document) => document.parentId === item.id,
                     );
@@ -499,8 +623,9 @@ function MybatisPlaybookModule() {
                     const siblingIndex = siblings.findIndex(
                       (row) => row.document.id === item.id,
                     );
-                    return (
-                      <InlineTitleRow
+                        return (
+                          <SortableInlineTitleRow
+                            sortableId={item.id}
                         key={item.id}
                         title={item.title}
                         number={index + 1}
@@ -549,10 +674,12 @@ function MybatisPlaybookModule() {
                             onMoveDown={() => void moveDocument(item, "down")}
                           />
                         }
-                      />
-                    );
-                  })}
-                </div>
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               ) : (
                 <div className="grid min-h-48 place-items-center text-sm font-semibold text-text-muted">
                   Lexical 문서를 추가하세요.
@@ -722,6 +849,71 @@ function Panel({
     </aside>
   );
 }
+type InlineTitleRowProps = {
+  title: string;
+  number?: number;
+  depth?: number;
+  active?: boolean;
+  icon?: boolean;
+  busy: boolean;
+  onClick?: () => void;
+  onRowClick?: () => void;
+  onOpen?: () => void;
+  onAddChild?: () => void;
+  hasChildren?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
+  onSave: (nextTitle: string) => Promise<void>;
+  onDelete: () => void;
+  extraActions?: ReactNode;
+  dragHandle?: ReactNode;
+  sortableRef?: (node: HTMLElement | null) => void;
+  sortableStyle?: CSSProperties;
+  isDragging?: boolean;
+};
+
+function SortableInlineTitleRow({
+  sortableId,
+  ...props
+}: InlineTitleRowProps & { sortableId: string }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId });
+
+  return (
+    <InlineTitleRow
+      {...props}
+      sortableRef={setNodeRef}
+      sortableStyle={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.65 : 1,
+        zIndex: isDragging ? 10 : undefined,
+      }}
+      isDragging={isDragging}
+      dragHandle={
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          disabled={props.busy}
+          onClick={(event) => event.stopPropagation()}
+          className="grid size-7 shrink-0 cursor-grab place-items-center rounded-md text-text-muted transition-colors hover:bg-surface-raised hover:text-text-primary active:cursor-grabbing disabled:pointer-events-none disabled:opacity-40"
+          title="드래그하여 순서 변경"
+          aria-label={`${props.title} 순서 변경`}
+        >
+          <GripVertical className="size-4" />
+        </button>
+      }
+    />
+  );
+}
+
 function InlineTitleRow({
   title,
   number,
@@ -739,24 +931,11 @@ function InlineTitleRow({
   onSave,
   onDelete,
   extraActions,
-}: {
-  title: string;
-  number?: number;
-  depth?: number;
-  active?: boolean;
-  icon?: boolean;
-  busy: boolean;
-  onClick?: () => void;
-  onRowClick?: () => void;
-  onOpen?: () => void;
-  onAddChild?: () => void;
-  hasChildren?: boolean;
-  expanded?: boolean;
-  onToggle?: () => void;
-  onSave: (nextTitle: string) => Promise<void>;
-  onDelete: () => void;
-  extraActions?: ReactNode;
-}) {
+  dragHandle,
+  sortableRef,
+  sortableStyle,
+  isDragging,
+}: InlineTitleRowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
   const [saving, setSaving] = useState(false);
@@ -794,9 +973,10 @@ function InlineTitleRow({
 
   return (
     <div
+      ref={sortableRef}
       onClick={onRowClick && !editing && !busy ? onRowClick : undefined}
-      style={{ marginLeft: `${depth * 28}px` }}
-      className={`flex items-center gap-2 rounded-md p-2.5 ${active ? "bg-brand-glass" : "bg-surface-muted"} ${onRowClick ? "cursor-pointer" : ""}`}
+      style={{ marginLeft: `${depth * 28}px`, ...sortableStyle }}
+      className={`flex items-center gap-2 rounded-md p-2.5 ${active ? "bg-brand-glass" : "bg-surface-muted"} ${onRowClick ? "cursor-pointer" : ""} ${isDragging ? "shadow-lg ring-2 ring-brand-border/40" : ""}`}
     >
       {editing ? (
         <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -833,6 +1013,7 @@ function InlineTitleRow({
         </div>
       ) : (
         <>
+          {dragHandle}
           {onOpen ? (
             <div
               className="flex min-w-0 flex-1 items-center gap-2 p-1"
