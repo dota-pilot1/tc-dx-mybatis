@@ -127,8 +127,59 @@
     caret-color: var(--primary);
   }
 
+  .lexical-editor-input ::selection,
+  .lexical-editor-input code ::selection {
+    background: color-mix(in srgb, var(--primary) 28%, transparent);
+  }
+
   .lexical-editor-input:focus {
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+
+  .lexical-editor-input code[data-language],
+  .lexical-editor-input code[data-highlight-language] {
+    position: relative;
+    padding-top: 1rem;
+  }
+
+  [data-code-copy-button] {
+    position: fixed;
+    top: 0.55rem;
+    right: 0.55rem;
+    z-index: 100;
+    cursor: pointer;
+    border: 1px solid var(--surface-border-soft);
+    border-radius: 0.375rem;
+    background: var(--surface-raised);
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+    transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  }
+
+  [data-code-copy-button] svg {
+    display: block;
+    width: 0.9rem;
+    height: 0.9rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  [data-code-copy-button]:hover {
+    border-color: var(--brand-border);
+    background: var(--brand-glass);
+    color: var(--brand-primary);
   }
 
   .lexical-toolbar {

@@ -370,7 +370,7 @@ export default function DocumentDrawer({
           <section className="mt-6">
             <h3 className="flex items-center gap-2 text-sm font-black text-text-primary">
               <MessageCircle className="size-4 text-brand-primary" />
-              댓글·대댓글
+              댓글
               <span className="grid min-w-6 place-items-center rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] text-text-muted">
                 {comments.length}
               </span>

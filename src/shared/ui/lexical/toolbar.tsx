@@ -9,6 +9,7 @@ import {
   $getSelection,
   $isElementNode,
   $isRangeSelection,
+  $setSelection,
   INTERNAL_$isBlock,
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
@@ -19,6 +20,7 @@ import {
   UNDO_COMMAND,
   type ElementFormatType,
   type LexicalNode,
+  type RangeSelection,
   type TextFormatType,
 } from 'lexical'
 import {
@@ -90,8 +92,10 @@ const FONT_FAMILIES: { label: string; value: string }[] = [
   { label: 'Pretendard', value: 'Pretendard, sans-serif' },
 ]
 
-const TEXT_COLORS: { label: string; value: string }[] = [
-  { label: '기본', value: 'inherit' },
+// `clear: true` removes the CSS property instead of setting a value, so code
+// blocks fall back to their syntax-highlight colors instead of being overridden.
+const TEXT_COLORS: { label: string; value: string; clear?: boolean }[] = [
+  { label: '기본', value: 'inherit', clear: true },
   { label: '본문', value: 'var(--foreground)' },
   { label: '보조', value: 'var(--muted-foreground)' },
   { label: '브랜드', value: 'var(--primary)' },
@@ -100,8 +104,8 @@ const TEXT_COLORS: { label: string; value: string }[] = [
   { label: '보라', value: '#9333ea' },
 ]
 
-const HIGHLIGHT_COLORS: { label: string; value: string }[] = [
-  { label: '없음', value: 'transparent' },
+const HIGHLIGHT_COLORS: { label: string; value: string; clear?: boolean }[] = [
+  { label: '없음', value: 'transparent', clear: true },
   { label: '브랜드', value: 'color-mix(in srgb, var(--primary) 18%, transparent)' },
   { label: '노랑', value: '#fef08a' },
   { label: '분홍', value: '#fbcfe8' },
@@ -128,6 +132,7 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
   const [activeFormats, setActiveFormats] = useState<Record<string, boolean>>({})
   const [fontSize, setFontSize] = useState<string>('15px')
   const [fontFamily, setFontFamily] = useState<string>('inherit')
+  const lastSelectionRef = useRef<RangeSelection | null>(null)
 
   const updateToolbar = useCallback(() => {
     const selection = $getSelection()
@@ -145,10 +150,18 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
   }, [])
 
   const applyStyle = useCallback(
-    (styles: Record<string, string>) => {
+    (styles: Record<string, string | null>) => {
       editor.update(() => {
-        const selection = $getSelection()
+        let selection = $getSelection()
+        if (!$isRangeSelection(selection) && lastSelectionRef.current) {
+          const restoredSelection = lastSelectionRef.current.clone()
+          $setSelection(restoredSelection)
+          selection = restoredSelection
+        }
         if ($isRangeSelection(selection)) {
+          // Code blocks included: CodeHighlightPlugin unlocks canHaveFormat so
+          // $patchStyleText splits and styles the selection here too, and the
+          // style-aware tokenizer keeps the style through re-highlighting.
           $patchStyleText(selection, styles)
         }
       })
@@ -160,7 +173,13 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
     return editor.registerCommand(
       SELECTION_CHANGE_COMMAND,
       () => {
-        editor.getEditorState().read(updateToolbar)
+        editor.getEditorState().read(() => {
+          const selection = $getSelection()
+          if ($isRangeSelection(selection)) {
+            lastSelectionRef.current = selection.clone()
+          }
+          updateToolbar()
+        })
         return false
       },
       1,
@@ -225,22 +244,58 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
       const selection = $getSelection()
       if (!$isRangeSelection(selection)) return
 
-      const blocks = new Map<string, LexicalNode>()
-      for (const node of selection.getNodes()) {
-        const block = $findMatchingParent(node, INTERNAL_$isBlock)
-        if (block && $isElementNode(block)) blocks.set(block.getKey(), block)
+      const points = selection.getStartEndPoints()
+      if (!points) return
+      const [startPoint, endPoint] = points
+      const startBlock = $findMatchingParent(startPoint.getNode(), INTERNAL_$isBlock)
+      const endBlock = $findMatchingParent(endPoint.getNode(), INTERNAL_$isBlock)
+
+      // A partial selection inside one block should become its own code block.
+      if (
+        startBlock &&
+        startBlock === endBlock &&
+        $isElementNode(startBlock) &&
+        startPoint.type === 'text' &&
+        endPoint.type === 'text' &&
+        startPoint.getNode().getKey() !== startBlock.getKey()
+      ) {
+        const textNodes = startBlock.getAllTextNodes()
+        const getOffset = (point: typeof startPoint) => {
+          let offset = 0
+          for (const textNode of textNodes) {
+            if (textNode.getKey() === point.getNode().getKey()) return offset + point.offset
+            offset += textNode.getTextContentSize()
+          }
+          return offset
+        }
+
+        const startOffset = getOffset(startPoint)
+        const endOffset = getOffset(endPoint)
+        const text = startBlock.getTextContent()
+        const selectedText = text.slice(startOffset, endOffset)
+
+        if (selectedText.length > 0) {
+          const replacement: LexicalNode[] = []
+          const beforeText = text.slice(0, startOffset)
+          const afterText = text.slice(endOffset)
+          if (beforeText) replacement.push($createParagraphNode().append($createTextNode(beforeText)))
+          const codeNode = $createCodeNode().append($createTextNode(selectedText))
+          replacement.push(codeNode)
+          if (afterText) replacement.push($createParagraphNode().append($createTextNode(afterText)))
+
+          const [firstReplacement, ...remainingReplacements] = replacement
+          startBlock.replace(firstReplacement)
+          let previous = firstReplacement
+          for (const next of remainingReplacements) {
+            previous.insertAfter(next)
+            previous = next
+          }
+          codeNode.selectEnd()
+          return
+        }
       }
 
-      const blockNodes = [...blocks.values()]
-      if (blockNodes.length === 0) return
-
-      const codeNode = $createCodeNode()
-      codeNode.append($createTextNode(blockNodes.map((block) => block.getTextContent()).join('\n')))
-
-      const [firstBlock, ...remainingBlocks] = blockNodes
-      firstBlock.replace(codeNode)
-      remainingBlocks.forEach((block) => block.remove())
-      codeNode.selectEnd()
+      $setBlocksType(selection, () => $createCodeNode())
     })
   }
 
@@ -857,8 +912,8 @@ function ColorPicker({
 }: {
   icon: React.ReactNode
   title: string
-  colors: { label: string; value: string }[]
-  onPick: (color: string) => void
+  colors: { label: string; value: string; clear?: boolean }[]
+  onPick: (color: string | null) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -885,9 +940,10 @@ function ColorPicker({
               type="button"
               title={color.label}
               onClick={() => {
-                onPick(color.value)
+                onPick(color.clear ? null : color.value)
                 setOpen(false)
               }}
+              onMouseDown={(event) => event.preventDefault()}
               className="size-5 rounded border border-surface-border transition-transform hover:scale-110"
               style={{
                 backgroundColor: color.value,
@@ -1023,6 +1079,7 @@ function ToolbarButton({
     <button
       type="button"
       onClick={onClick}
+      onMouseDown={(event) => event.preventDefault()}
       disabled={disabled}
       title={title}
       className={`flex size-8 shrink-0 items-center justify-center rounded-md transition-colors ${

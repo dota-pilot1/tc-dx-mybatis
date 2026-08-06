@@ -22,11 +22,14 @@ import { TableNode, TableCellNode, TableRowNode } from '@lexical/table'
 import {
   $createParagraphNode,
   $createTextNode,
+  $getRoot,
   $getSelection,
+  $isElementNode,
   $isRangeSelection,
   COMMAND_PRIORITY_HIGH,
   KEY_BACKSPACE_COMMAND,
   type EditorState,
+  type LexicalNode,
 } from 'lexical'
 import { $findMatchingParent } from '@lexical/utils'
 import { $isCodeNode } from '@lexical/code'
@@ -39,6 +42,7 @@ import { DragDropImagePlugin, ImagePlugin } from './plugins/image-plugin'
 import { YoutubePlugin } from './plugins/youtube-plugin'
 import { TableActionMenuPlugin } from './plugins/table-action-plugin'
 import { uploadImageToS3 } from './utils/upload-image'
+import { styleAwareCodeTokenizer } from './utils/code-style-tokenizer'
 
 type LexicalEditorProps = {
   initialState?: string
@@ -57,9 +61,188 @@ const MARKDOWN_TRANSFORMERS = TRANSFORMERS.filter(
   (transformer) => transformer !== ORDERED_LIST,
 )
 
+// CodeHighlightNode reports canHaveFormat() === false, and $patchStyleText skips
+// those nodes entirely. Allowing it lets the toolbar style code text without
+// removing syntax classes (setFormat stays a no-op, so bold/italic still can't apply).
+const codeHighlightPrototype = CodeHighlightNode.prototype as unknown as {
+  canHaveFormat: () => boolean
+}
+const originalCanHaveFormat = codeHighlightPrototype.canHaveFormat
+let styledCodeEditorCount = 0
+
 function CodeHighlightPlugin() {
   const [editor] = useLexicalComposerContext()
-  useEffect(() => registerCodeHighlighting(editor), [editor])
+  useEffect(() => {
+    if (styledCodeEditorCount === 0) {
+      codeHighlightPrototype.canHaveFormat = () => true
+    }
+    styledCodeEditorCount += 1
+
+    const unregister = registerCodeHighlighting(editor, styleAwareCodeTokenizer)
+    return () => {
+      if (typeof unregister === 'function') {
+        unregister()
+      }
+      styledCodeEditorCount -= 1
+      if (styledCodeEditorCount === 0) {
+        codeHighlightPrototype.canHaveFormat = originalCanHaveFormat
+      }
+    }
+  }, [editor])
+  return null
+}
+
+function CodeCopyButtonPlugin() {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    let disposed = false
+    let root: HTMLElement | null = null
+    let observer: MutationObserver | null = null
+    let syncTimer = 0
+    let layoutFrameId = 0
+    let layoutFrames = 0
+    const buttons = new Map<HTMLElement, HTMLButtonElement>()
+
+    const setCopyButtonState = (button: HTMLButtonElement, copied: boolean) => {
+      button.innerHTML = copied
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+      button.title = copied ? '복사됨' : '코드 복사'
+      button.setAttribute('aria-label', copied ? '복사됨' : '코드 복사')
+    }
+
+    const getCodeText = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? ''
+      if (node.nodeName === 'BR') return '\n'
+      return Array.from(node.childNodes).map(getCodeText).join('')
+    }
+
+    const copyCode = async (codeElement: HTMLElement, button: HTMLButtonElement) => {
+      let source = getCodeText(codeElement)
+      const codeElements = Array.from(
+        root?.querySelectorAll<HTMLElement>('code') ?? [],
+      )
+      const codeIndex = codeElements.indexOf(codeElement)
+
+      editor.getEditorState().read(() => {
+        const codeNodes: LexicalNode[] = []
+        const visit = (node: LexicalNode) => {
+          if ($isCodeNode(node)) codeNodes.push(node)
+          if ($isElementNode(node)) {
+            node.getChildren().forEach(visit)
+          }
+        }
+        visit($getRoot())
+        const codeNode = codeNodes[codeIndex]
+        if (codeNode) source = codeNode.getTextContent()
+      })
+
+      try {
+        await navigator.clipboard.writeText(source)
+      } catch {
+        const textarea = document.createElement('textarea')
+        textarea.value = source
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        textarea.remove()
+      }
+
+      setCopyButtonState(button, true)
+      window.setTimeout(() => {
+        if (button.isConnected) setCopyButtonState(button, false)
+      }, 1400)
+    }
+
+    const syncButtons = () => {
+      if (disposed) return
+
+      const nextRoot = editor.getRootElement()
+      if (!nextRoot) {
+        syncTimer = window.requestAnimationFrame(syncButtons)
+        return
+      }
+
+      if (root !== nextRoot) {
+        observer?.disconnect()
+        root = nextRoot
+        observer = new MutationObserver(() => {
+          syncLayoutBurst()
+        })
+        observer.observe(root, { childList: true, subtree: true })
+      }
+
+      const codeElements = new Set(
+        root.querySelectorAll<HTMLElement>('code'),
+      )
+
+      buttons.forEach((button, codeElement) => {
+        if (!codeElements.has(codeElement)) {
+          button.remove()
+          buttons.delete(codeElement)
+        }
+      })
+      codeElements.forEach((codeElement) => {
+        let button = buttons.get(codeElement)
+        if (!button) {
+          button = document.createElement('button')
+          button.type = 'button'
+          button.className = 'code-copy-button'
+          button.setAttribute('contenteditable', 'false')
+          button.dataset.codeCopyButton = 'true'
+          setCopyButtonState(button, false)
+          button.addEventListener('mousedown', (event) => event.preventDefault())
+          button.addEventListener('click', (event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            void copyCode(codeElement, button!)
+          })
+          document.body.appendChild(button)
+          buttons.set(codeElement, button)
+        }
+
+        const codeRect = codeElement.getBoundingClientRect()
+        const visible = codeRect.width > 0 && codeRect.height > 0
+        button.style.display = visible ? 'inline-flex' : 'none'
+        if (visible) {
+          button.style.top = `${codeRect.top + 8}px`
+          button.style.left = `${codeRect.right - 34}px`
+        }
+      })
+    }
+
+    const syncLayoutBurst = () => {
+      layoutFrames = 0
+      window.cancelAnimationFrame(layoutFrameId)
+      const tick = () => {
+        syncButtons()
+        layoutFrames += 1
+        if (layoutFrames < 36) {
+          layoutFrameId = window.requestAnimationFrame(tick)
+        }
+      }
+      tick()
+    }
+
+    syncLayoutBurst()
+    window.addEventListener('resize', syncButtons)
+    window.addEventListener('scroll', syncButtons, true)
+
+    return () => {
+      disposed = true
+      observer?.disconnect()
+      window.cancelAnimationFrame(syncTimer)
+      window.cancelAnimationFrame(layoutFrameId)
+      window.removeEventListener('resize', syncButtons)
+      window.removeEventListener('scroll', syncButtons, true)
+      buttons.forEach((button) => button.remove())
+    }
+  }, [editor])
+
   return null
 }
 
@@ -91,27 +274,6 @@ function CodeBlockBackspacePlugin() {
         },
         COMMAND_PRIORITY_HIGH,
       ),
-    [editor],
-  )
-
-  return null
-}
-
-function CodeBlockMergePlugin() {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(
-    () =>
-      editor.registerNodeTransform(CodeNode, (codeNode) => {
-        const nextNode = codeNode.getNextSibling()
-        if (!$isCodeNode(nextNode) || codeNode.getLanguage() !== nextNode.getLanguage()) {
-          return
-        }
-
-        const nextChildren = nextNode.getChildren()
-        codeNode.append($createTextNode('\n'), ...nextChildren)
-        nextNode.remove()
-      }),
     [editor],
   )
 
@@ -299,8 +461,8 @@ export function LexicalEditor({
         <HorizontalRulePlugin />
         <TablePlugin hasHorizontalScroll />
         <CodeHighlightPlugin />
+        <CodeCopyButtonPlugin />
         {!readOnly ? <CodeBlockBackspacePlugin /> : null}
-        {!readOnly ? <CodeBlockMergePlugin /> : null}
         <MermaidCodeNodeTransformPlugin />
         {!readOnly ? <OrderedListBackspacePlugin /> : null}
         {readOnly ? null : <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />}
