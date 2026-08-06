@@ -5,6 +5,12 @@ name: Tauri Release
 # v로 시작하는 태그를 푸시하면 실행됨 (예: git tag v0.1.1 && git push origin v0.1.1)
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to publish"
+        required: true
+        default: "v0.1.18"
+        type: string
   push:
     tags:
       - "v*"
@@ -65,8 +71,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: .
-          tagName: ${{ github.ref_name }}
-          releaseName: "TC DX MyBatis ${{ github.ref_name }}"
+          tagName: ${{ inputs.release_tag || github.ref_name }}
+          releaseName: "TC DX MyBatis ${{ inputs.release_tag || github.ref_name }}"
           releaseBody: "자동 빌드된 릴리스입니다. macOS는 .dmg, Windows는 .exe(setup)를 받아 설치하세요."
           releaseDraft: false
           prerelease: false
