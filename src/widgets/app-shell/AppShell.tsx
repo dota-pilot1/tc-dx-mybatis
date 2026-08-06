@@ -72,12 +72,25 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
   const appUpdate = useAppUpdate();
   const appVersion = appUpdate.state.currentVersion;
 
+  function selectView(id: ViewId) {
+    setActive(id);
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", id);
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+    );
+  }
+
   function openView(id: ViewId) {
     if (id === "prototype-note") {
       setPrototypeNoteTargetId(null);
       setPrototypeNoteMenuKey((key) => key + 1);
     }
-    setActive(id);
+    selectView(id);
   }
 
   useEffect(() => {
@@ -198,7 +211,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             </span>
           )}
           <button
-            onClick={() => setActive("settings")}
+            onClick={() => selectView("settings")}
             title="설정"
             className={
               "flex h-[34px] w-[34px] items-center justify-center text-[15px] transition-all duration-200 " +
@@ -269,7 +282,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                 type="button"
                 onClick={() => {
                   setAccountOpen(false);
-                  setActive("profile");
+                  selectView("profile");
                 }}
                 className="flex min-h-10 w-full items-center gap-2 bg-surface-raised px-3 text-left text-[13px] font-extrabold text-text-secondary hover:bg-surface-muted hover:text-text-primary"
               >
@@ -312,7 +325,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <PrototypeModule
             onOpenPrototypeNote={(prototypeId) => {
               setPrototypeNoteTargetId(prototypeId);
-              setActive("prototype-note");
+              selectView("prototype-note");
             }}
           />
         ) : active === "prototype-note" ? (
@@ -325,7 +338,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             targetPrototypeId={prototypeNoteTargetId}
             onOpenPrototype={() => {
               setPrototypeNoteTargetId(null);
-              setActive("prototype");
+              selectView("prototype");
             }}
           />
         ) : active === "design-template" ? (

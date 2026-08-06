@@ -138,6 +138,7 @@ function MybatisPlaybookModule() {
   );
   const [inlineTitle, setInlineTitle] = useState({ category: "", topic: "" });
   const [busy, setBusy] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [categoryWidth, setCategoryWidth] = useState(() =>
     readStoredWidth(CATEGORY_WIDTH_KEY, 400, 300, 560),
@@ -456,6 +457,12 @@ function MybatisPlaybookModule() {
     void saveDocumentOrder(arrayMove(siblings, from, to), parentId);
   }
 
+  function handleAppRefresh() {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    window.setTimeout(() => window.location.reload(), 520);
+  }
+
   const layoutStyle = {
     "--architecture-category-width": `${categoryWidth}px`,
     "--architecture-topic-width": `${topicWidth}px`,
@@ -474,6 +481,18 @@ function MybatisPlaybookModule() {
           title="사용 방법"
         >
           <CircleHelp className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={handleAppRefresh}
+          disabled={isRefreshing}
+          className="ui-icon-button h-7 w-7"
+          title="앱 새로고침"
+          aria-label="앱 새로고침"
+        >
+          <RefreshCw
+            className={`size-4 ${isRefreshing ? "animate-[spin_520ms_ease-in-out]" : ""}`}
+          />
         </button>
       </PageHeader>
       <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted p-5">
@@ -586,16 +605,6 @@ function MybatisPlaybookModule() {
                     문서 추가
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() =>
-                    void load(category?.id, topic?.id, document?.id)
-                  }
-                  className="ui-icon-button h-9 w-9"
-                  title="새로고침"
-                >
-                  <RefreshCw className="size-4" />
-                </button>
               </div>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto p-5">
