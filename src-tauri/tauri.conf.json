@@ -23,9 +23,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlGQjgyNjNGMEFFNzMxRkQKUldUOU1lY0tQeWE0bis2ZlVpK1RtQjg2WHIvWTRVam8vNVhMUXliWVp2QkFnZFJIQ1BRMHZrQzEK",
+      "pubkey": "ZFc1MGNuVnpkR1ZrSUdOdmJXMWxiblE2SUcxcGJtbHphV2R1SUhCMVlteHBZeUJyWlhrNklFTkRNMEk0UmtFMk9UWTJOVGhFUkRrS1VsZFVXbXBYVjFkd2J6ZzNla3BwTTI5SWVWYzFSVzFRU0N0TVRFaGpTR1pXZVhGS1dGcFFRVmREUm01cFZEWlpkV2xqVG1OeVUzUUs=",
       "endpoints": [
-        "https://github.com/dota-pilot1/tc-toolkit-for-commerce/releases/latest/download/latest.json"
+        "https://github.com/dota-pilot1/tc-dx-mybatis/releases/latest/download/latest.json"
       ]
     }
   },
