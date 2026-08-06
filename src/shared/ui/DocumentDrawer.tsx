@@ -8,7 +8,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LexicalEditor } from "./lexical/lexical-editor";
 
 type DrawerDocument = { id: string; title: string; content: string };
@@ -96,6 +96,14 @@ export default function DocumentDrawer({
   const [editingDraft, setEditingDraft] = useState("");
   const [commentBusy, setCommentBusy] = useState(false);
   const [commentError, setCommentError] = useState("");
+  const [isOpening, setIsOpening] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const closeDrawer = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(onClose, 180);
+  }, [isClosing, onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +148,22 @@ export default function DocumentDrawer({
       cancelled = true;
     };
   }, [commentApi, document.id]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setIsOpening(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeDrawer();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeDrawer]);
 
   function persist(nextComments: DocumentComment[]) {
     setComments(nextComments);
@@ -243,14 +267,18 @@ export default function DocumentDrawer({
   const roots = comments.filter((comment) => !comment.parentId);
 
   return (
-    <div className="fixed inset-0 z-[60] isolate bg-[color-mix(in_srgb,var(--background)_84%,transparent)]">
+    <div
+      className={`fixed inset-0 z-[60] isolate bg-[color-mix(in_srgb,var(--background)_84%,transparent)] transition-opacity duration-200 ease-out ${isOpening || isClosing ? "opacity-0" : "opacity-100"}`}
+    >
       <button
         type="button"
         aria-label="드로워 닫기"
-        onClick={onClose}
+        onClick={closeDrawer}
         className="absolute inset-0 cursor-default"
       />
-      <aside className="absolute inset-y-0 right-0 z-10 flex w-full max-w-[820px] flex-col border-l border-surface-border bg-surface-raised shadow-2xl">
+      <aside
+        className={`absolute inset-y-0 right-0 z-10 flex w-full max-w-[820px] flex-col border-l border-surface-border bg-surface-raised shadow-2xl transition-transform duration-200 ease-out ${isOpening || isClosing ? "translate-x-full" : "translate-x-0"}`}
+      >
         <header className="flex items-center gap-2 border-b border-surface-border px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-brand-primary">
@@ -320,7 +348,7 @@ export default function DocumentDrawer({
           )}
           <button
             type="button"
-            onClick={onClose}
+            onClick={closeDrawer}
             className="ui-icon-button ml-2 h-9 w-9 shrink-0"
             title="닫기"
           >

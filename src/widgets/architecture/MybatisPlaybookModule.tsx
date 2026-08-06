@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Save,
   Trash2,
+  AlertTriangle,
   X,
 } from "lucide-react";
 import {
@@ -164,15 +165,16 @@ function MybatisPlaybookModule() {
   const topics = category?.topics ?? [];
   const topic = topics.find((item) => item.id === topicId) ?? topics[0];
   const documents = topic?.documents ?? [];
-  const documentRows = flattenDocuments(documents).filter(({ document }) => {
-    let parentId = document.parentId ?? null;
+  const documentRows = flattenDocuments(documents);
+  function isDocumentVisible(item: ArchitecturePlaybookDocument) {
+    let parentId = item.parentId ?? null;
     while (parentId) {
       if (!expandedDocumentIds.has(parentId)) return false;
       const parent = documents.find((item) => item.id === parentId);
       parentId = parent?.parentId ?? null;
     }
     return true;
-  });
+  }
   const document =
     documents.find((item) => item.id === documentId) ?? documents[0];
   const resizeCategory = useColumnResize(categoryWidth, setCategoryWidth, {
@@ -627,9 +629,10 @@ function MybatisPlaybookModule() {
                     items={documentRows.map(({ document: item }) => item.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="space-y-2">
+                    <div>
                       {documentRows.map(
                         ({ document: item, depth, indexPath }) => {
+                          const visible = isDocumentVisible(item);
                           const hasChildren = documents.some(
                             (document) => document.parentId === item.id,
                           );
@@ -642,70 +645,80 @@ function MybatisPlaybookModule() {
                           const siblingIndex = siblings.findIndex(
                             (row) => row.document.id === item.id,
                           );
-                        return (
-                          <SortableInlineTitleRow
-                            sortableId={item.id}
-                            key={item.id}
-                            title={item.title}
-                            indexLabel={indexPath.join(".")}
-                            depth={depth}
-                            active={item.id === document?.id}
-                            busy={busy}
-                            onRowClick={() => {
-                              setDocumentId(item.id);
-                              setDetail(null);
-                            }}
-                            onOpen={() => {
-                              setDocumentId(item.id);
-                              setDetail(item);
-                            }}
-                            onAddChild={
-                              depth === 0
-                                ? () =>
-                                    openDocumentDialog({
-                                      mode: "create",
-                                      parentId: item.id,
-                                      parentTitle: item.title,
+                          return (
+                            <div
+                              key={item.id}
+                              className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${visible ? "max-h-24 opacity-100" : "pointer-events-none max-h-0 opacity-0"}`}
+                            >
+                              <div className="pb-2">
+                                <SortableInlineTitleRow
+                                  sortableId={item.id}
+                                  title={item.title}
+                                  indexLabel={indexPath.join(".")}
+                                  depth={depth}
+                                  active={item.id === document?.id}
+                                  busy={busy}
+                                  onRowClick={() => {
+                                    setDocumentId(item.id);
+                                    setDetail(null);
+                                  }}
+                                  onOpen={() => {
+                                    setDocumentId(item.id);
+                                    setDetail(item);
+                                  }}
+                                  onDoubleClick={() => {
+                                    setDocumentId(item.id);
+                                    setDetail(item);
+                                  }}
+                                  onAddChild={
+                                    depth === 0
+                                      ? () =>
+                                          openDocumentDialog({
+                                            mode: "create",
+                                            parentId: item.id,
+                                            parentTitle: item.title,
+                                          })
+                                      : undefined
+                                  }
+                                  hasChildren={hasChildren}
+                                  expanded={expanded}
+                                  onToggle={() =>
+                                    setExpandedDocumentIds((current) => {
+                                      const next = new Set(current);
+                                      if (next.has(item.id)) next.delete(item.id);
+                                      else next.add(item.id);
+                                      return next;
                                     })
-                                : undefined
-                            }
-                            hasChildren={hasChildren}
-                            expanded={expanded}
-                            onToggle={() =>
-                              setExpandedDocumentIds((current) => {
-                                const next = new Set(current);
-                                if (next.has(item.id)) next.delete(item.id);
-                                else next.add(item.id);
-                                return next;
-                              })
-                            }
-                            onSave={(nextTitle) =>
-                              saveDocumentTitle(item, nextTitle)
-                            }
-                            onDelete={() =>
-                              openDocumentDialog({
-                                mode: "delete",
-                                target: item,
-                              })
-                            }
-                            extraActions={
-                              <OrderControls
-                                itemLabel={item.title}
-                                busy={busy}
-                                upDisabled={siblingIndex === 0}
-                                downDisabled={
-                                  siblingIndex === siblings.length - 1
-                                }
-                                onMoveUp={() =>
-                                  void moveDocument(item, "up")
-                                }
-                                onMoveDown={() =>
-                                  void moveDocument(item, "down")
-                                }
-                              />
-                            }
-                          />
-                        );
+                                  }
+                                  onSave={(nextTitle) =>
+                                    saveDocumentTitle(item, nextTitle)
+                                  }
+                                  onDelete={() =>
+                                    openDocumentDialog({
+                                      mode: "delete",
+                                      target: item,
+                                    })
+                                  }
+                                  extraActions={
+                                    <OrderControls
+                                      itemLabel={item.title}
+                                      busy={busy}
+                                      upDisabled={siblingIndex === 0}
+                                      downDisabled={
+                                        siblingIndex === siblings.length - 1
+                                      }
+                                      onMoveUp={() =>
+                                        void moveDocument(item, "up")
+                                      }
+                                      onMoveDown={() =>
+                                        void moveDocument(item, "down")
+                                      }
+                                    />
+                                  }
+                                />
+                              </div>
+                            </div>
+                          );
                         },
                       )}
                     </div>
@@ -890,6 +903,7 @@ type InlineTitleRowProps = {
   onClick?: () => void;
   onRowClick?: () => void;
   onOpen?: () => void;
+  onDoubleClick?: () => void;
   onAddChild?: () => void;
   hasChildren?: boolean;
   expanded?: boolean;
@@ -955,6 +969,7 @@ function InlineTitleRow({
   onClick,
   onRowClick,
   onOpen,
+  onDoubleClick,
   onAddChild,
   hasChildren,
   expanded,
@@ -979,6 +994,11 @@ function InlineTitleRow({
     event.stopPropagation();
     setDraft(title);
     setEditing(true);
+  }
+  function handleDoubleClick(event: MouseEvent) {
+    event.stopPropagation();
+    if (onDoubleClick) onDoubleClick();
+    else startEditing(event);
   }
   function cancelEditing() {
     setDraft(title);
@@ -1007,7 +1027,7 @@ function InlineTitleRow({
       ref={sortableRef}
       onClick={onRowClick && !editing && !busy ? onRowClick : undefined}
       style={{ marginLeft: `${depth * 28}px`, ...sortableStyle }}
-      className={`flex items-center gap-2 rounded-md p-2.5 ${active ? "bg-brand-glass" : "bg-surface-muted"} ${onRowClick ? "cursor-pointer" : ""} ${isDragging ? "shadow-lg ring-2 ring-brand-border/40" : ""}`}
+      className={`flex items-center gap-2 rounded-md p-2.5 ${active ? "border-l-2 border-brand-border bg-brand-glass" : depth > 0 ? "border-l-2 border-brand-border/40 bg-surface-raised" : "bg-surface-muted"} ${onRowClick ? "cursor-pointer" : ""} ${isDragging ? "shadow-lg ring-2 ring-brand-border/40" : ""}`}
     >
       {editing ? (
         <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -1048,12 +1068,12 @@ function InlineTitleRow({
           {onOpen ? (
             <div
               className="flex min-w-0 flex-1 items-center gap-2 p-1"
-              onDoubleClick={startEditing}
-              title="제목을 더블클릭하여 수정"
+              onDoubleClick={handleDoubleClick}
+              title={onDoubleClick ? "더블클릭하여 문서 열기" : "제목을 더블클릭하여 수정"}
             >
               {indexLabel !== undefined && (
                 <span
-                  className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-1.5 text-[11px] font-black text-text-muted"
+                  className={`inline-flex shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised font-black text-text-muted ${depth > 0 ? "h-5 min-w-5 px-1 text-[10px]" : "h-6 min-w-6 px-1.5 text-[11px]"}`}
                   aria-label={`${indexLabel}번 문서`}
                 >
                   {indexLabel}
@@ -1079,11 +1099,13 @@ function InlineTitleRow({
                 <FileText className="size-3.5 shrink-0 text-brand-primary" />
               )}
               {depth > 0 && (
-                <span className="shrink-0 text-sm font-black text-brand-primary">
+                <span className="shrink-0 text-xs font-bold text-brand-primary/75">
                   ㄴ
                 </span>
               )}
-              <span className="truncate text-sm font-black text-text-primary">
+              <span
+                className={`truncate ${depth > 0 ? "text-[13px] font-bold text-text-secondary" : "text-sm font-black text-text-primary"}`}
+              >
                 {title}
               </span>
             </div>
@@ -1091,13 +1113,13 @@ function InlineTitleRow({
             <button
               type="button"
               onClick={onClick}
-              onDoubleClick={startEditing}
-              title="제목을 더블클릭하여 수정"
+              onDoubleClick={handleDoubleClick}
+              title={onDoubleClick ? "더블클릭하여 문서 열기" : "제목을 더블클릭하여 수정"}
               className="flex min-w-0 flex-1 items-center gap-2 p-1 text-left"
             >
               {indexLabel !== undefined && (
                 <span
-                  className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-1.5 text-[11px] font-black text-text-muted"
+                  className={`inline-flex shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised font-black text-text-muted ${depth > 0 ? "h-5 min-w-5 px-1 text-[10px]" : "h-6 min-w-6 px-1.5 text-[11px]"}`}
                   aria-label={`${indexLabel}번 항목`}
                 >
                   {indexLabel}
@@ -1123,11 +1145,13 @@ function InlineTitleRow({
                 <FileText className="size-3.5 shrink-0 text-brand-primary" />
               )}
               {depth > 0 && (
-                <span className="shrink-0 text-sm font-black text-brand-primary">
+                <span className="shrink-0 text-xs font-bold text-brand-primary/75">
                   ㄴ
                 </span>
               )}
-              <span className="truncate text-sm font-black text-text-primary">
+              <span
+                className={`truncate ${depth > 0 ? "text-[13px] font-bold text-text-secondary" : "text-sm font-black text-text-primary"}`}
+              >
                 {title}
               </span>
             </button>
@@ -1146,18 +1170,20 @@ function InlineTitleRow({
               <GitBranch className="size-3.5" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-            disabled={busy}
-            className="ui-icon-button h-8 w-8 shrink-0 text-[var(--destructive)]"
-            title="삭제"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          {!onOpen && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete();
+              }}
+              disabled={busy}
+              className="ui-icon-button h-8 w-8 shrink-0 text-[var(--destructive)]"
+              title="삭제"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
           {extraActions && (
             <div onClick={(event) => event.stopPropagation()}>{extraActions}</div>
           )}
@@ -1195,11 +1221,10 @@ function TitleDialog({
   return (
     <DialogFrame
       title={`${state.kind === "category" ? "MyBatis 영역" : "MyBatis 주제"} 삭제`}
+      tone="danger"
       onClose={onClose}
     >
-      <p className="text-sm font-semibold text-text-secondary">
-        이 항목을 삭제할까요?
-      </p>
+      <DangerNotice message="이 항목을 삭제할까요?" />
       <Actions busy={busy} deleting onClose={onClose} onSave={onSave} />
     </DialogFrame>
   );
@@ -1228,6 +1253,7 @@ function DocumentDialog({
     <DialogFrame
       contentClassName="flex min-h-0 flex-1 flex-col"
       size={deleting ? "default" : "wide"}
+      tone={deleting ? "danger" : "default"}
       title={
         deleting
           ? "Lexical 문서 삭제"
@@ -1238,9 +1264,7 @@ function DocumentDialog({
       onClose={onClose}
     >
       {deleting ? (
-        <p className="text-sm font-semibold text-text-secondary">
-          이 문서를 삭제할까요?
-        </p>
+        <DangerNotice message="이 문서를 삭제할까요?" />
       ) : (
         <>
           {state.parentId && (
@@ -1289,11 +1313,11 @@ function Actions({
   onSave: () => void;
 }) {
   return (
-    <div className="mt-5 flex justify-end gap-2">
+    <div className="mt-4 flex justify-end gap-2 border-t border-surface-border-soft pt-3">
       <button
         type="button"
         onClick={onClose}
-        className="rounded-md px-3 py-2 text-xs font-black text-text-secondary"
+        className="inline-flex h-9 items-center justify-center rounded-lg border border-surface-border px-3.5 text-xs font-black text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
       >
         취소
       </button>
@@ -1301,7 +1325,7 @@ function Actions({
         type="button"
         onClick={onSave}
         disabled={busy}
-        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-black text-text-on-brand ${deleting ? "bg-[var(--destructive)]" : "bg-brand-primary"}`}
+        className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-xs font-black text-text-on-brand transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${deleting ? "bg-[var(--destructive)]" : "bg-brand-primary"}`}
       >
         {deleting ? (
           <Trash2 className="size-3.5" />
@@ -1317,31 +1341,87 @@ function DialogFrame({
   title,
   onClose,
   size = "default",
+  tone = "default",
   contentClassName = "",
   children,
 }: {
   title: string;
   onClose: () => void;
   size?: "default" | "wide";
+  tone?: "default" | "danger";
   contentClassName?: string;
   children: ReactNode;
 }) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-[color-mix(in_srgb,var(--background)_72%,transparent)] p-4">
+    <div className="fixed inset-0 z-40 grid place-items-center bg-[color-mix(in_srgb,var(--foreground)_24%,transparent)] p-4 backdrop-blur-[3px]">
       <div
-        className={`flex max-h-[calc(100vh-2rem)] w-full ${size === "wide" ? "max-w-6xl" : "max-w-3xl"} flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised p-5 shadow-2xl`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mybatis-dialog-title"
+        className={`flex max-h-[calc(100vh-2rem)] w-full ${size === "wide" ? "max-w-6xl" : "max-w-lg"} flex-col overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-2xl`}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-text-primary">{title}</h2>
+        <div
+          className={`flex items-start justify-between gap-4 border-b px-5 py-4 ${tone === "danger" ? "border-[var(--destructive)]/20 bg-danger-glass" : "border-brand-border/40 bg-brand-glass"}`}
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div
+              className={`grid size-9 shrink-0 place-items-center rounded-lg ${tone === "danger" ? "bg-[var(--destructive)]/12 text-[var(--destructive)]" : "bg-surface-raised text-brand-primary"}`}
+            >
+              {tone === "danger" ? (
+                <AlertTriangle className="size-5" />
+              ) : (
+                <CircleHelp className="size-5" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p
+                className={`text-[10px] font-black uppercase tracking-[0.14em] ${tone === "danger" ? "text-[var(--destructive)]" : "text-brand-primary"}`}
+              >
+                {tone === "danger" ? "확인 필요" : "MyBatis Playbook"}
+              </p>
+              <h2
+                id="mybatis-dialog-title"
+                className="mt-0.5 truncate text-base font-black text-text-primary"
+              >
+                {title}
+              </h2>
+            </div>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="ui-icon-button h-8 w-8 rounded-full"
+            className="ui-icon-button h-8 w-8 shrink-0 rounded-lg"
+            aria-label="다이얼로그 닫기"
           >
             <X className="size-4" />
           </button>
         </div>
-        <div className={`mt-5 min-h-0 ${contentClassName}`}>{children}</div>
+        <div className={`min-h-0 px-5 pb-5 pt-4 ${contentClassName}`}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+function DangerNotice({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--destructive)]/25 border-l-4 border-l-[var(--destructive)] bg-danger-glass px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-[13px] font-black text-text-primary">{message}</p>
+        <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">
+          삭제한 내용은 복구할 수 없습니다. 신중하게 진행해 주세요.
+        </p>
       </div>
     </div>
   );
