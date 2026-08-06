@@ -41,7 +41,6 @@ import PageHeader from "../../shared/ui/PageHeader";
 import { useColumnResize } from "../../shared/lib/useColumnResize";
 import ColumnResizeHandle from "../../shared/ui/ColumnResizeHandle";
 import DocumentDrawer from "../../shared/ui/DocumentDrawer";
-import OrderControls from "../../shared/ui/OrderControls";
 import {
   createArchitectureCategory,
   createArchitectureDocument,
@@ -53,7 +52,6 @@ import {
   deleteArchitectureTopic,
   listArchitectureDocumentComments,
   listArchitecturePlaybook,
-  moveArchitectureDocument,
   reorderArchitectureCategories,
   reorderArchitectureDocuments,
   reorderArchitectureTopics,
@@ -380,25 +378,6 @@ function MybatisPlaybookModule() {
       setBusy(false);
     }
   }
-  async function moveDocument(
-    item: ArchitecturePlaybookDocument,
-    direction: "up" | "down",
-  ) {
-    setBusy(true);
-    try {
-      await moveArchitectureDocument(item.id, direction);
-      await load(category?.id, topic?.id, item.id);
-    } catch (reason: unknown) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "문서 순서를 바꾸지 못했습니다.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function saveCategoryOrder(nextCategories: ArchitecturePlaybookCategory[]) {
     setCategories(nextCategories);
     setBusy(true);
@@ -637,14 +616,6 @@ function MybatisPlaybookModule() {
                             (document) => document.parentId === item.id,
                           );
                           const expanded = expandedDocumentIds.has(item.id);
-                          const siblings = documentRows.filter(
-                            (row) =>
-                              (row.document.parentId ?? null) ===
-                              (item.parentId ?? null),
-                          );
-                          const siblingIndex = siblings.findIndex(
-                            (row) => row.document.id === item.id,
-                          );
                           return (
                             <div
                               key={item.id}
@@ -698,22 +669,6 @@ function MybatisPlaybookModule() {
                                       mode: "delete",
                                       target: item,
                                     })
-                                  }
-                                  extraActions={
-                                    <OrderControls
-                                      itemLabel={item.title}
-                                      busy={busy}
-                                      upDisabled={siblingIndex === 0}
-                                      downDisabled={
-                                        siblingIndex === siblings.length - 1
-                                      }
-                                      onMoveUp={() =>
-                                        void moveDocument(item, "up")
-                                      }
-                                      onMoveDown={() =>
-                                        void moveDocument(item, "down")
-                                      }
-                                    />
                                   }
                                 />
                               </div>
@@ -792,12 +747,48 @@ function MybatisPlaybookModule() {
       {helpOpen && (
         <DialogFrame
           title="MyBatis Playbook"
+          size="wide"
           onClose={() => setHelpOpen(false)}
         >
-          <p className="text-sm font-semibold leading-6 text-text-secondary">
-            환경 설정, 빌드, 배포, 운영 과정을 1차 영역과 2차 주제 아래 여러
-            Lexical 문서로 정리합니다.
-          </p>
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm font-semibold leading-6 text-text-primary">
+                환경 설정부터 빌드·배포·운영까지의 작업을 영역, 주제, 문서의
+                3단계 구조로 정리하는 학습 플레이북입니다.
+              </p>
+              <p className="mt-1 text-xs leading-5 text-text-muted">
+                필요한 문서를 선택해 내용을 확인하고, 드래그로 학습 순서를
+                조정할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <HelpSection title="사용 순서">
+                <HelpStep number="1" text="왼쪽에서 1차 영역을 선택합니다." />
+                <HelpStep number="2" text="가운데에서 2차 주제를 선택합니다." />
+                <HelpStep number="3" text="오른쪽 문서 목록에서 문서를 확인합니다." />
+                <HelpStep number="4" text="열기 또는 더블 클릭으로 문서 내용을 봅니다." />
+              </HelpSection>
+              <HelpSection title="문서 관리">
+                <HelpStep number="＋" text="문서 추가로 새 학습 문서를 만듭니다." />
+                <HelpStep number="✎" text="수정에서 제목과 본문을 변경합니다." />
+                <HelpStep number="⌫" text="삭제는 상세 화면에서 진행합니다." />
+                <HelpStep number="↕" text="문서 왼쪽 핸들을 드래그해 순서를 바꿉니다." />
+              </HelpSection>
+            </div>
+
+            <div className="rounded-xl border border-brand-border/50 bg-brand-glass p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-primary">
+                알아두기
+              </p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-text-secondary">
+                <li>• 화살표 순서 버튼 없이 드래그 앤 드롭으로 순서를 변경합니다.</li>
+                <li>• 자식 문서가 있는 행의 화살표를 눌러 하위 문서를 펼치거나 접습니다.</li>
+                <li>• 상단 새로 고침 버튼으로 최신 문서 목록을 다시 불러옵니다.</li>
+                <li>• 상세 화면에서는 코드 블록 오른쪽의 복사 아이콘으로 코드를 복사할 수 있습니다.</li>
+              </ul>
+            </div>
+          </div>
         </DialogFrame>
       )}
     </div>
@@ -1414,6 +1405,33 @@ function DialogFrame({
     </div>
   );
 }
+
+function HelpSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-surface-border-soft bg-surface-muted p-4">
+      <h3 className="text-sm font-black text-text-primary">{title}</h3>
+      <div className="mt-3 space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function HelpStep({ number, text }: { number: string; text: string }) {
+  return (
+    <div className="flex items-start gap-2.5 text-xs leading-5 text-text-secondary">
+      <span className="grid size-5 shrink-0 place-items-center rounded-md bg-brand-glass text-[11px] font-black text-brand-primary">
+        {number}
+      </span>
+      <span>{text}</span>
+    </div>
+  );
+}
+
 function DangerNotice({ message }: { message: string }) {
   return (
     <div className="rounded-xl border border-[var(--destructive)]/25 border-l-4 border-l-[var(--destructive)] bg-danger-glass px-4 py-3">
