@@ -105,12 +105,21 @@ function flattenDocuments(documents: ArchitecturePlaybookDocument[]) {
       roots.push(document);
     }
   }
-  const rows: { document: ArchitecturePlaybookDocument; depth: number }[] = [];
-  function visit(items: ArchitecturePlaybookDocument[], depth: number) {
-    for (const document of items) {
-      rows.push({ document, depth });
-      visit(children.get(document.id) ?? [], depth + 1);
-    }
+  const rows: {
+    document: ArchitecturePlaybookDocument;
+    depth: number;
+    indexPath: number[];
+  }[] = [];
+  function visit(
+    items: ArchitecturePlaybookDocument[],
+    depth: number,
+    parentIndexPath: number[] = [],
+  ) {
+    items.forEach((document, index) => {
+      const indexPath = [...parentIndexPath, index + 1];
+      rows.push({ document, depth, indexPath });
+      visit(children.get(document.id) ?? [], depth + 1, indexPath);
+    });
   }
   visit(roots, 0);
   return rows;
@@ -619,73 +628,86 @@ function MybatisPlaybookModule() {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-2">
-                      {documentRows.map(({ document: item, depth }, index) => {
-                    const hasChildren = documents.some(
-                      (document) => document.parentId === item.id,
-                    );
-                    const expanded = expandedDocumentIds.has(item.id);
-                    const siblings = documentRows.filter(
-                      (row) =>
-                        (row.document.parentId ?? null) ===
-                        (item.parentId ?? null),
-                    );
-                    const siblingIndex = siblings.findIndex(
-                      (row) => row.document.id === item.id,
-                    );
+                      {documentRows.map(
+                        ({ document: item, depth, indexPath }) => {
+                          const hasChildren = documents.some(
+                            (document) => document.parentId === item.id,
+                          );
+                          const expanded = expandedDocumentIds.has(item.id);
+                          const siblings = documentRows.filter(
+                            (row) =>
+                              (row.document.parentId ?? null) ===
+                              (item.parentId ?? null),
+                          );
+                          const siblingIndex = siblings.findIndex(
+                            (row) => row.document.id === item.id,
+                          );
                         return (
                           <SortableInlineTitleRow
                             sortableId={item.id}
-                        key={item.id}
-                        title={item.title}
-                        number={index + 1}
-                        depth={depth}
-                        active={item.id === document?.id}
-                        busy={busy}
-                        onRowClick={() => {
-                          setDocumentId(item.id);
-                          setDetail(null);
-                        }}
-                        onOpen={() => {
-                          setDocumentId(item.id);
-                          setDetail(item);
-                        }}
-                        onAddChild={
-                          depth === 0
-                            ? () =>
-                                openDocumentDialog({
-                                  mode: "create",
-                                  parentId: item.id,
-                                  parentTitle: item.title,
-                                })
-                            : undefined
-                        }
-                        hasChildren={hasChildren}
-                        expanded={expanded}
-                        onToggle={() =>
-                          setExpandedDocumentIds((current) => {
-                            const next = new Set(current);
-                            if (next.has(item.id)) next.delete(item.id);
-                            else next.add(item.id);
-                            return next;
-                          })
-                        }
-                        onSave={(nextTitle) => saveDocumentTitle(item, nextTitle)}
-                        onDelete={() =>
-                          openDocumentDialog({ mode: "delete", target: item })
-                        }
-                        extraActions={
-                          <OrderControls
-                            itemLabel={item.title}
+                            key={item.id}
+                            title={item.title}
+                            indexLabel={indexPath.join(".")}
+                            depth={depth}
+                            active={item.id === document?.id}
                             busy={busy}
-                            upDisabled={siblingIndex === 0}
-                            downDisabled={siblingIndex === siblings.length - 1}
-                            onMoveUp={() => void moveDocument(item, "up")}
-                            onMoveDown={() => void moveDocument(item, "down")}
-                          />
-                        }
+                            onRowClick={() => {
+                              setDocumentId(item.id);
+                              setDetail(null);
+                            }}
+                            onOpen={() => {
+                              setDocumentId(item.id);
+                              setDetail(item);
+                            }}
+                            onAddChild={
+                              depth === 0
+                                ? () =>
+                                    openDocumentDialog({
+                                      mode: "create",
+                                      parentId: item.id,
+                                      parentTitle: item.title,
+                                    })
+                                : undefined
+                            }
+                            hasChildren={hasChildren}
+                            expanded={expanded}
+                            onToggle={() =>
+                              setExpandedDocumentIds((current) => {
+                                const next = new Set(current);
+                                if (next.has(item.id)) next.delete(item.id);
+                                else next.add(item.id);
+                                return next;
+                              })
+                            }
+                            onSave={(nextTitle) =>
+                              saveDocumentTitle(item, nextTitle)
+                            }
+                            onDelete={() =>
+                              openDocumentDialog({
+                                mode: "delete",
+                                target: item,
+                              })
+                            }
+                            extraActions={
+                              <OrderControls
+                                itemLabel={item.title}
+                                busy={busy}
+                                upDisabled={siblingIndex === 0}
+                                downDisabled={
+                                  siblingIndex === siblings.length - 1
+                                }
+                                onMoveUp={() =>
+                                  void moveDocument(item, "up")
+                                }
+                                onMoveDown={() =>
+                                  void moveDocument(item, "down")
+                                }
+                              />
+                            }
                           />
                         );
-                      })}
+                        },
+                      )}
                     </div>
                   </SortableContext>
                 </DndContext>
@@ -860,7 +882,7 @@ function Panel({
 }
 type InlineTitleRowProps = {
   title: string;
-  number?: number;
+  indexLabel?: string;
   depth?: number;
   active?: boolean;
   icon?: boolean;
@@ -925,7 +947,7 @@ function SortableInlineTitleRow({
 
 function InlineTitleRow({
   title,
-  number,
+  indexLabel,
   depth = 0,
   active,
   icon,
@@ -1029,12 +1051,12 @@ function InlineTitleRow({
               onDoubleClick={startEditing}
               title="제목을 더블클릭하여 수정"
             >
-              {number !== undefined && (
+              {indexLabel !== undefined && (
                 <span
-                  className="grid size-6 shrink-0 place-items-center rounded-md border border-surface-border-soft bg-surface-raised text-[11px] font-black text-text-muted"
-                  aria-label={`${number}번 문서`}
+                  className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-1.5 text-[11px] font-black text-text-muted"
+                  aria-label={`${indexLabel}번 문서`}
                 >
-                  {number}
+                  {indexLabel}
                 </span>
               )}
               {hasChildren && onToggle && (
@@ -1073,12 +1095,12 @@ function InlineTitleRow({
               title="제목을 더블클릭하여 수정"
               className="flex min-w-0 flex-1 items-center gap-2 p-1 text-left"
             >
-              {number !== undefined && (
+              {indexLabel !== undefined && (
                 <span
-                  className="grid size-6 shrink-0 place-items-center rounded-md border border-surface-border-soft bg-surface-raised text-[11px] font-black text-text-muted"
-                  aria-label={`${number}번 항목`}
+                  className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-1.5 text-[11px] font-black text-text-muted"
+                  aria-label={`${indexLabel}번 항목`}
                 >
-                  {number}
+                  {indexLabel}
                 </span>
               )}
               {hasChildren && onToggle && (
