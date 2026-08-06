@@ -37,7 +37,7 @@ import {
   INSERT_UNORDERED_LIST_COMMAND,
 } from '@lexical/list'
 import { INSERT_TABLE_COMMAND } from '@lexical/table'
-import { $createCodeNode } from '@lexical/code'
+import { $createCodeNode, $isCodeNode } from '@lexical/code'
 import { TOGGLE_LINK_COMMAND } from '@lexical/link'
 import { INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/react/LexicalHorizontalRuleNode'
 import {
@@ -233,9 +233,33 @@ export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: P
   const formatQuote = () => {
     editor.update(() => {
       const selection = $getSelection()
-      if ($isRangeSelection(selection)) {
-        $setBlocksType(selection, () => $createQuoteNode())
+      if (!$isRangeSelection(selection)) return
+
+      const codeBlocks = new Set<ReturnType<typeof $createCodeNode>>()
+      selection.getNodes().forEach((node) => {
+        const codeBlock = $isCodeNode(node)
+          ? node
+          : $findMatchingParent(node, $isCodeNode)
+        if (codeBlock) codeBlocks.add(codeBlock)
+      })
+
+      // A code block and a quote are different block formats. When converting
+      // a code block, recreate it as plain quote text so code formatting does
+      // not remain as unexpected inline-code styling inside the quote.
+      if (codeBlocks.size > 0) {
+        let lastQuote = null
+        codeBlocks.forEach((codeBlock) => {
+          const quote = $createQuoteNode().append(
+            $createTextNode(codeBlock.getTextContent()),
+          )
+          codeBlock.replace(quote)
+          lastQuote = quote
+        })
+        if (codeBlocks.size === 1 && lastQuote) lastQuote.selectEnd()
+        return
       }
+
+      $setBlocksType(selection, () => $createQuoteNode())
     })
   }
 

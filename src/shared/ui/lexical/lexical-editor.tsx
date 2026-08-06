@@ -121,7 +121,7 @@ function CodeCopyButtonPlugin() {
     const copyCode = async (codeElement: HTMLElement, button: HTMLButtonElement) => {
       let source = getCodeText(codeElement)
       const codeElements = Array.from(
-        root?.querySelectorAll<HTMLElement>('code') ?? [],
+        root?.querySelectorAll<HTMLElement>(':scope > code') ?? [],
       )
       const codeIndex = codeElements.indexOf(codeElement)
 
@@ -177,7 +177,7 @@ function CodeCopyButtonPlugin() {
       }
 
       const codeElements = new Set(
-        root.querySelectorAll<HTMLElement>('code'),
+        root.querySelectorAll<HTMLElement>(':scope > code'),
       )
 
       buttons.forEach((button, codeElement) => {
