@@ -23,7 +23,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "untrusted comment: minisign public key: 9C9CECC069C4CA16\nRWQWysRpwOycnDhPCWx2FbL1x0+yLK2Oxq6iTb4L5LCRYw3pIQzHeR/7",
+      "pubkey": "RWQWysRpwOycnDhPCWx2FbL1x0+yLK2Oxq6iTb4L5LCRYw3pIQzHeR/7",
       "endpoints": [
         "https://github.com/dota-pilot1/tc-dx-mybatis/releases/latest/download/latest.json"
       ]
