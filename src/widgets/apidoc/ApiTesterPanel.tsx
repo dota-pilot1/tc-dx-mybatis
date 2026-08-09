@@ -273,7 +273,7 @@ function ApiTesterPanel({
   );
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [activeTab, setActiveTab] = useState<"params" | "headers" | "body">("params");
+  const [activeTab, setActiveTab] = useState<"params" | "headers" | "body">("body");
   const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
   const [responseExpanded, setResponseExpanded] = useState(false);
   const [isResponseCopied, setIsResponseCopied] = useState(false);
@@ -282,7 +282,7 @@ function ApiTesterPanel({
   useEffect(() => {
     setContent(parseApiBlockContent(blocks, endpoint));
     setResponse(null);
-    setActiveTab("params");
+    setActiveTab("body");
     setResponseExpanded(false);
     setIsResponseCopied(false);
   }, [blocks, endpoint]);
@@ -309,7 +309,7 @@ function ApiTesterPanel({
     if (!window.confirm("현재 입력한 요청 설정을 초기화할까요?")) return;
     setContent(createDefaultApiBlockContent(endpoint));
     setResponse(null);
-    setActiveTab("params");
+    setActiveTab("body");
   };
 
   const handleSend = async () => {
@@ -389,11 +389,21 @@ function ApiTesterPanel({
       });
       setResponseTab("body");
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       setResponse({
         status: 0,
         statusText: "Network Error",
         headers: {},
-        body: error instanceof Error ? error.message : "요청에 실패했습니다.",
+        body: [
+          "요청을 전송하지 못했습니다.",
+          `URL: ${url.toString()}`,
+          `원인: ${errorMessage || "알 수 없는 네트워크 오류"}`,
+          "",
+          "확인할 사항:",
+          "- 백엔드 서버가 해당 URL의 포트에서 실행 중인지 확인하세요.",
+          "- Tauri 앱을 다시 빌드해 HTTP 권한 변경을 반영하세요.",
+        ].join("\n"),
         durationMs: Date.now() - start,
         timestamp: new Date().toISOString(),
       });

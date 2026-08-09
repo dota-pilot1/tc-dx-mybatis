@@ -24,9 +24,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Save,
   Trash2,
-  AlertTriangle,
   X,
 } from "lucide-react";
 import {
@@ -37,6 +35,11 @@ import {
   type ReactNode,
 } from "react";
 import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
+import {
+  DangerNotice,
+  DialogActions as Actions,
+  DialogFrame,
+} from "../../shared/ui/dialog";
 import PageHeader from "../../shared/ui/PageHeader";
 import { useColumnResize } from "../../shared/lib/useColumnResize";
 import ColumnResizeHandle from "../../shared/ui/ColumnResizeHandle";
@@ -1213,6 +1216,7 @@ function TitleDialog({
     <DialogFrame
       title={`${state.kind === "category" ? "MyBatis 영역" : "MyBatis 주제"} 삭제`}
       tone="danger"
+      size="sm"
       onClose={onClose}
     >
       <DangerNotice message="이 항목을 삭제할까요?" />
@@ -1243,8 +1247,9 @@ function DocumentDialog({
   return (
     <DialogFrame
       contentClassName="flex min-h-0 flex-1 flex-col"
-      size={deleting ? "default" : "wide"}
+      size={deleting ? "sm" : "wide"}
       tone={deleting ? "danger" : "default"}
+      eyebrow={deleting ? undefined : "MyBatis Playbook"}
       title={
         deleting
           ? "Lexical 문서 삭제"
@@ -1292,119 +1297,6 @@ function DocumentDialog({
     </DialogFrame>
   );
 }
-function Actions({
-  busy,
-  deleting,
-  onClose,
-  onSave,
-}: {
-  busy: boolean;
-  deleting: boolean;
-  onClose: () => void;
-  onSave: () => void;
-}) {
-  return (
-    <div className="mt-4 flex justify-end gap-2 border-t border-surface-border-soft pt-3">
-      <button
-        type="button"
-        onClick={onClose}
-        className="inline-flex h-9 items-center justify-center rounded-lg border border-surface-border px-3.5 text-xs font-black text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
-      >
-        취소
-      </button>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={busy}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-xs font-black text-text-on-brand transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${deleting ? "bg-[var(--destructive)]" : "bg-brand-primary"}`}
-      >
-        {deleting ? (
-          <Trash2 className="size-3.5" />
-        ) : (
-          <Save className="size-3.5" />
-        )}
-        {deleting ? "삭제" : "저장"}
-      </button>
-    </div>
-  );
-}
-function DialogFrame({
-  title,
-  onClose,
-  size = "default",
-  tone = "default",
-  contentClassName = "",
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  size?: "default" | "wide";
-  tone?: "default" | "danger";
-  contentClassName?: string;
-  children: ReactNode;
-}) {
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      onClose();
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-[color-mix(in_srgb,var(--foreground)_24%,transparent)] p-4 backdrop-blur-[3px]">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mybatis-dialog-title"
-        className={`flex max-h-[calc(100vh-2rem)] w-full ${size === "wide" ? "max-w-6xl" : "max-w-lg"} flex-col overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-2xl`}
-      >
-        <div
-          className={`flex items-start justify-between gap-4 border-b px-5 py-4 ${tone === "danger" ? "border-[var(--destructive)]/20 bg-danger-glass" : "border-brand-border/40 bg-brand-glass"}`}
-        >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div
-              className={`grid size-9 shrink-0 place-items-center rounded-lg ${tone === "danger" ? "bg-[var(--destructive)]/12 text-[var(--destructive)]" : "bg-surface-raised text-brand-primary"}`}
-            >
-              {tone === "danger" ? (
-                <AlertTriangle className="size-5" />
-              ) : (
-                <CircleHelp className="size-5" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p
-                className={`text-[10px] font-black uppercase tracking-[0.14em] ${tone === "danger" ? "text-[var(--destructive)]" : "text-brand-primary"}`}
-              >
-                {tone === "danger" ? "확인 필요" : "MyBatis Playbook"}
-              </p>
-              <h2
-                id="mybatis-dialog-title"
-                className="mt-0.5 truncate text-base font-black text-text-primary"
-              >
-                {title}
-              </h2>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ui-icon-button h-8 w-8 shrink-0 rounded-lg"
-            aria-label="다이얼로그 닫기"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className={`min-h-0 px-5 pb-5 pt-4 ${contentClassName}`}>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function HelpSection({
   title,
@@ -1432,18 +1324,6 @@ function HelpStep({ number, text }: { number: string; text: string }) {
   );
 }
 
-function DangerNotice({ message }: { message: string }) {
-  return (
-    <div className="rounded-xl border border-[var(--destructive)]/25 border-l-4 border-l-[var(--destructive)] bg-danger-glass px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-[13px] font-black text-text-primary">{message}</p>
-        <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">
-          삭제한 내용은 복구할 수 없습니다. 신중하게 진행해 주세요.
-        </p>
-      </div>
-    </div>
-  );
-}
 function DetailDialog({
   document,
   onClose,

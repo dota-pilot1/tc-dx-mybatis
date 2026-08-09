@@ -158,6 +158,18 @@ function CodeCopyButtonPlugin() {
       }, 1400)
     }
 
+    // 버튼은 body 기준 fixed라서 모달·드로어·스크롤 컨테이너에 코드 블록이 가려져도
+    // 그대로 떠 있는다. 실제로 그 지점이 코드 블록으로 노출돼 있을 때만 보여준다.
+    const isSpotExposed = (codeElement: HTMLElement, x: number, y: number) => {
+      if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return false
+      // 버튼 자신은 물론 그 안의 아이콘 svg까지 걸러야 한다. svg는 HTMLElement가
+      // 아니라서 버튼만 걸러내면 판정이 매번 뒤집혀 버튼이 깜박인다.
+      const topMost = document
+        .elementsFromPoint(x, y)
+        .find((element) => !element.closest('[data-code-copy-button]'))
+      return Boolean(topMost && codeElement.contains(topMost))
+    }
+
     const syncButtons = () => {
       if (disposed) return
 
@@ -206,11 +218,16 @@ function CodeCopyButtonPlugin() {
         }
 
         const codeRect = codeElement.getBoundingClientRect()
-        const visible = codeRect.width > 0 && codeRect.height > 0
+        const top = codeRect.top + 8
+        const left = codeRect.right - 34
+        const visible =
+          codeRect.width > 0 &&
+          codeRect.height > 0 &&
+          isSpotExposed(codeElement, left + 14, top + 14)
         button.style.display = visible ? 'inline-flex' : 'none'
         if (visible) {
-          button.style.top = `${codeRect.top + 8}px`
-          button.style.left = `${codeRect.right - 34}px`
+          button.style.top = `${top}px`
+          button.style.left = `${left}px`
         }
       })
     }
@@ -231,10 +248,13 @@ function CodeCopyButtonPlugin() {
     syncLayoutBurst()
     window.addEventListener('resize', syncButtons)
     window.addEventListener('scroll', syncButtons, true)
+    // 모달이 열리는 것처럼 에디터 밖에서 가려짐이 바뀌는 경우는 이벤트가 오지 않는다.
+    const occlusionTimer = window.setInterval(syncButtons, 200)
 
     return () => {
       disposed = true
       observer?.disconnect()
+      window.clearInterval(occlusionTimer)
       window.cancelAnimationFrame(syncTimer)
       window.cancelAnimationFrame(layoutFrameId)
       window.removeEventListener('resize', syncButtons)
