@@ -18,11 +18,13 @@ import {
   ChevronRight,
   CircleHelp,
   CloudCog,
+  ExternalLink,
   FileText,
   GitBranch,
   GripVertical,
   Pencil,
   Plus,
+  PanelRightOpen,
   RefreshCw,
   Trash2,
   X,
@@ -44,6 +46,7 @@ import PageHeader from "../../shared/ui/PageHeader";
 import { useColumnResize } from "../../shared/lib/useColumnResize";
 import ColumnResizeHandle from "../../shared/ui/ColumnResizeHandle";
 import DocumentDrawer from "../../shared/ui/DocumentDrawer";
+import MybatisDocumentPage from "./MybatisDocumentPage";
 import {
   createArchitectureCategory,
   createArchitectureDocument,
@@ -127,7 +130,13 @@ function flattenDocuments(documents: ArchitecturePlaybookDocument[]) {
   return rows;
 }
 
-function MybatisPlaybookModule() {
+type MybatisPlaybookModuleProps = {
+  pageDocumentId?: string | null;
+  onOpenDocumentPage?: (documentId: string) => void;
+  onCloseDocumentPage?: () => void;
+};
+
+function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocumentPage }: MybatisPlaybookModuleProps) {
   const [categories, setCategories] = useState<ArchitecturePlaybookCategory[]>(
     [],
   );
@@ -235,6 +244,10 @@ function MybatisPlaybookModule() {
   useEffect(() => {
     void load();
   }, []);
+
+  if (pageDocumentId && onCloseDocumentPage) {
+    return <MybatisDocumentPage documentId={pageDocumentId} onClose={onCloseDocumentPage} />;
+  }
 
   function openDeleteTitleDialog(
     target: ArchitecturePlaybookCategory | ArchitecturePlaybookTopic,
@@ -640,6 +653,7 @@ function MybatisPlaybookModule() {
                                     setDocumentId(item.id);
                                     setDetail(item);
                                   }}
+                                  onOpenPage={onOpenDocumentPage ? () => onOpenDocumentPage(item.id) : undefined}
                                   onDoubleClick={() => {
                                     setDocumentId(item.id);
                                     setDetail(item);
@@ -897,6 +911,7 @@ type InlineTitleRowProps = {
   onClick?: () => void;
   onRowClick?: () => void;
   onOpen?: () => void;
+  onOpenPage?: () => void;
   onDoubleClick?: () => void;
   onAddChild?: () => void;
   hasChildren?: boolean;
@@ -963,6 +978,7 @@ function InlineTitleRow({
   onClick,
   onRowClick,
   onOpen,
+  onOpenPage,
   onDoubleClick,
   onAddChild,
   hasChildren,
@@ -1182,19 +1198,14 @@ function InlineTitleRow({
             <div onClick={(event) => event.stopPropagation()}>{extraActions}</div>
           )}
           {onOpen && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpen();
-              }}
-              disabled={busy}
-              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2.5 text-xs font-black text-brand-primary transition-colors hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border/40 disabled:opacity-40"
-              title="문서 열기"
-            >
-              <span>열기</span>
-              <ChevronRight className="size-3.5" />
-            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(); }} disabled={busy} className="ui-icon-button-brand h-8 w-8" title="드로워로 열기" aria-label="드로워로 열기">
+                <PanelRightOpen className="size-3.5" />
+              </button>
+              {onOpenPage && <button type="button" onClick={(event) => { event.stopPropagation(); onOpenPage(); }} disabled={busy} className="ui-icon-button h-8 w-8" title="페이지로 열기" aria-label="페이지로 열기">
+                <ExternalLink className="size-3.5" />
+              </button>}
+            </div>
           )}
         </>
       )}

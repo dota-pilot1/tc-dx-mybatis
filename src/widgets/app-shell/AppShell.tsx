@@ -46,6 +46,12 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
     if (requestedView === "home" || requestedView === "profile" || requestedView === "settings") return requestedView;
     return requestedView && isAppModuleId(requestedView) ? requestedView : "home";
   });
+  const [mybatisDocumentId, setMybatisDocumentId] = useState<string | null>(() => {
+    const requestedView = new URLSearchParams(window.location.search).get("view");
+    return requestedView === "architecture"
+      ? new URLSearchParams(window.location.search).get("document")
+      : null;
+  });
   const [prototypeNoteTargetId, setPrototypeNoteTargetId] = useState<
     string | null
   >(null);
@@ -74,15 +80,35 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
 
   function selectView(id: ViewId) {
     setActive(id);
+    if (id !== "architecture") setMybatisDocumentId(null);
 
     const params = new URLSearchParams(window.location.search);
     params.set("view", id);
+    if (id !== "architecture") params.delete("document");
+    else params.delete("document");
     const query = params.toString();
     window.history.replaceState(
       null,
       "",
       `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
     );
+  }
+
+  function openMybatisDocumentPage(documentId: string) {
+    setActive("architecture");
+    setMybatisDocumentId(documentId);
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", "architecture");
+    params.set("document", documentId);
+    window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+  }
+
+  function closeMybatisDocumentPage() {
+    setMybatisDocumentId(null);
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", "architecture");
+    params.delete("document");
+    window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
   }
 
   function openView(id: ViewId) {
@@ -358,7 +384,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
         ) : active === "cicd" ? (
           <CicdPlaybookModule />
         ) : active === "architecture" ? (
-          <MybatisPlaybookModule />
+          <MybatisPlaybookModule pageDocumentId={mybatisDocumentId} onOpenDocumentPage={openMybatisDocumentPage} onCloseDocumentPage={closeMybatisDocumentPage} />
         ) : active === "apidoc" ? (
           <ApiDocModule isAdmin={user.role === "admin"} />
         ) : active === "apiexcel" ? (
