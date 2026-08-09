@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   Bell,
   Check,
+  HardDriveDownload,
   LayoutGrid,
   RefreshCw,
   Settings2,
@@ -19,8 +20,9 @@ import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 import { RAIL_THEMES } from "../../shared/lib/rail-themes";
 import type { useAppUpdate } from "../../shared/lib/useAppUpdate";
 import MenuManagementSettings from "./MenuManagementSettings";
+import { downloadDatabaseBackup } from "../../features/database-backup/api";
 
-type SettingsTab = "general" | "menu" | "update" | "users";
+type SettingsTab = "general" | "menu" | "update" | "users" | "backup";
 
 const SETTINGS_TABS: Array<{
   id: SettingsTab;
@@ -31,6 +33,7 @@ const SETTINGS_TABS: Array<{
   { id: "menu", label: "메뉴 관리", icon: LayoutGrid },
   { id: "update", label: "업데이트 체크", icon: RefreshCw },
   { id: "users", label: "사용자 관리", icon: Users },
+  { id: "backup", label: "DB 백업", icon: HardDriveDownload },
 ];
 
 type SettingsPageProps = {
@@ -65,7 +68,7 @@ function SettingsPage({ user, appUpdate }: SettingsPageProps) {
             aria-label="설정 메뉴"
             className="mt-5 flex gap-1 overflow-x-auto border-b border-surface-border-soft"
           >
-            {SETTINGS_TABS.map((tab) => {
+            {SETTINGS_TABS.filter((tab) => tab.id !== "backup" || user.role === "admin").map((tab) => {
               const active = activeTab === tab.id;
               const Icon = tab.icon;
               return (
@@ -98,12 +101,62 @@ function SettingsPage({ user, appUpdate }: SettingsPageProps) {
               <MenuManagementSettings />
             ) : activeTab === "update" ? (
               <UpdateSettings appUpdate={appUpdate} />
+            ) : activeTab === "backup" ? (
+              <DatabaseBackupSettings />
             ) : (
               <UserManagementSettings user={user} />
             )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DatabaseBackupSettings() {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await downloadDatabaseBackup();
+      setMessage("현재 DB 스냅샷 다운로드를 시작했습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "DB 백업을 받지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      <SettingsSection
+        icon={<HardDriveDownload className="size-4" />}
+        title="데이터베이스 백업"
+        description="운영 서버의 현재 SQLite DB를 안전한 스냅샷 파일로 저장합니다."
+      >
+        <div className="space-y-4">
+          <div className="rounded-md border border-brand-border bg-brand-glass px-4 py-3 text-[12px] leading-5 text-text-secondary">
+            이 파일에는 사용자 정보와 비공개 문서가 포함될 수 있습니다. 백업 파일을 외부에 공유하지 마세요.
+          </div>
+          <div className="flex items-center justify-between gap-4 border-t border-surface-border-soft pt-4">
+            <div>
+              <p className="text-[13px] font-bold text-text-primary">현재 DB 백업 다운로드</p>
+              <p className="mt-1 text-[12px] text-text-secondary">서버에서 SQLite 스냅샷을 만든 뒤 다운로드 폴더에 저장합니다.</p>
+            </div>
+            <Button variant="primary" size="sm" disabled={busy} onClick={() => void handleDownload()} className="shrink-0">
+              <HardDriveDownload className="size-3.5" />
+              {busy ? "백업 생성 중..." : "백업 받기"}
+            </Button>
+          </div>
+          {message ? <p className="text-[12px] font-semibold text-brand-primary">{message}</p> : null}
+          {error ? <p className="rounded-md border border-destructive/30 bg-danger-glass px-3 py-2 text-[12px] font-semibold text-destructive">{error}</p> : null}
+        </div>
+      </SettingsSection>
     </div>
   );
 }
