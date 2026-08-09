@@ -43,11 +43,14 @@ export function ImageComponent({
   const [isResizing, setIsResizing] = useState(false)
   const [currentWidth, setCurrentWidth] = useState(width)
   const [currentHeight, setCurrentHeight] = useState(height)
+  // [추가] 버튼 클릭 직후 화면 정렬을 즉시 반영한다.
+  const [currentAlignment, setCurrentAlignment] = useState<ImageAlignment>(alignment)
 
   useEffect(() => {
     setCurrentWidth(width)
     setCurrentHeight(height)
-  }, [width, height])
+    setCurrentAlignment(alignment)
+  }, [width, height, alignment])
 
   // 편집 가능할 때만 커맨드 등록 (클릭 선택 / Delete / Backspace)
   useEffect(() => {
@@ -108,16 +111,24 @@ export function ImageComponent({
       if (!editable) return
       e.preventDefault()
       e.stopPropagation()
-      // pointer capture: 포인터가 핸들 밖으로 빠져나가도 이벤트 계속 수신
-      e.currentTarget.setPointerCapture(e.pointerId)
-      const target = e.currentTarget
 
       setIsResizing(true)
 
       const startX = e.clientX
       const startY = e.clientY
-      const startWidth = currentWidth || imageRef.current?.naturalWidth || 300
-      const startHeight = currentHeight || imageRef.current?.naturalHeight || 200
+      // [수정] 저장된 원본 폭이 컨테이너보다 큰 경우에도
+      // 화면에 실제로 보이는 폭에서 드래그를 시작한다.
+      const renderedRect = imageRef.current?.getBoundingClientRect()
+      const startWidth =
+        renderedRect?.width ||
+        currentWidth ||
+        imageRef.current?.naturalWidth ||
+        300
+      const startHeight =
+        renderedRect?.height ||
+        currentHeight ||
+        imageRef.current?.naturalHeight ||
+        200
       const aspectRatio = startWidth / (startHeight || 1)
 
       const xSign = dir === 'se' || dir === 'ne' ? 1 : -1
@@ -125,8 +136,10 @@ export function ImageComponent({
 
       let latestWidth = startWidth
       let latestHeight = startHeight
+      let finished = false
 
       const onPointerMove = (moveEvent: PointerEvent) => {
+        if (finished) return
         const deltaX = (moveEvent.clientX - startX) * xSign
         const deltaY = (moveEvent.clientY - startY) * ySign
         const newWidth = Math.max(50, startWidth + deltaX)
@@ -138,12 +151,28 @@ export function ImageComponent({
         latestHeight = Math.round(newHeight)
         setCurrentWidth(latestWidth)
         setCurrentHeight(latestHeight)
+
+        // [추가] 화면 상태만 변경하지 않고 Lexical 노드에도 즉시 반영한다.
+        // 포인터를 놓기 전에 저장해도 최신 크기가 editorState에 남는다.
+        editor.update(() => {
+          const node = $getNodeByKey(nodeKey)
+          if ($isImageNode(node)) {
+            node.setWidthAndHeight(latestWidth, latestHeight)
+          }
+        })
+      }
+
+      const cleanup = () => {
+        document.removeEventListener('pointermove', onPointerMove)
+        document.removeEventListener('pointerup', onPointerUp)
+        document.removeEventListener('pointercancel', onPointerCancel)
       }
 
       const onPointerUp = () => {
+        if (finished) return
+        finished = true
         setIsResizing(false)
-        target.removeEventListener('pointermove', onPointerMove)
-        target.removeEventListener('pointerup', onPointerUp)
+        cleanup()
 
         editor.update(() => {
           const node = $getNodeByKey(nodeKey)
@@ -153,9 +182,18 @@ export function ImageComponent({
         })
       }
 
-      // capture된 요소에 리스너 등록 — document 전역 불필요
-      target.addEventListener('pointermove', onPointerMove)
-      target.addEventListener('pointerup', onPointerUp)
+      const onPointerCancel = () => {
+        if (finished) return
+        finished = true
+        setIsResizing(false)
+        cleanup()
+      }
+
+      // [수정] 포인터가 핸들 밖으로 빠져도 계속 리사이즈되도록
+      // document에서 이동/종료 이벤트를 추적한다.
+      document.addEventListener('pointermove', onPointerMove)
+      document.addEventListener('pointerup', onPointerUp)
+      document.addEventListener('pointercancel', onPointerCancel)
     },
     [editable, editor, nodeKey, currentWidth, currentHeight],
   )
@@ -163,6 +201,8 @@ export function ImageComponent({
   const handleAlignment = useCallback(
     (next: ImageAlignment) => {
       if (!editable) return
+      // [추가] Lexical 업데이트와 동시에 화면 상태도 갱신
+      setCurrentAlignment(next)
       editor.update(() => {
         const node = $getNodeByKey(nodeKey)
         if ($isImageNode(node)) node.setAlignment(next)
@@ -174,7 +214,7 @@ export function ImageComponent({
   // 정렬 래퍼는 항상 동일한 구조로 렌더 (view/edit 레이아웃 일관성 보장).
   // 외곽 div가 text-align으로 inline-block 자식을 정렬한다.
   const outerStyle: React.CSSProperties = {
-    textAlign: alignment,
+    textAlign: currentAlignment,
     width: '100%',
     margin: '8px 0',
   }
@@ -183,13 +223,8 @@ export function ImageComponent({
     display: 'inline-block',
     position: 'relative',
   }
-  if (alignment === 'left') {
-    innerStyle.float = 'left'
-    innerStyle.marginRight = '12px'
-  } else if (alignment === 'right') {
-    innerStyle.float = 'right'
-    innerStyle.marginLeft = '12px'
-  }
+  // [수정] 부모의 text-align이 left/center/right 정렬을 담당한다.
+  // float와 auto margin을 사용하지 않아 정렬 상태가 충돌하지 않게 한다.
 
   const showSelectionChrome = editable && isSelected
 
@@ -205,7 +240,13 @@ export function ImageComponent({
           className={`max-w-full rounded-md ${
             showSelectionChrome ? 'ring-2 ring-brand-border' : ''
           } ${isResizing ? 'select-none' : ''}`}
-          style={{ display: 'block' }}
+          style={{
+            display: 'block',
+            // [추가] HTML width 속성과 함께 inline width를 지정해
+            // 리사이즈 결과가 즉시 화면에 반영되도록 한다.
+            width: currentWidth || undefined,
+            height: currentHeight || undefined,
+          }}
           draggable={false}
         />
 
@@ -237,21 +278,21 @@ export function ImageComponent({
         {showSelectionChrome ? (
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-surface-strong border border-surface-border rounded-md shadow-md px-1 py-0.5 z-10 backdrop-blur-sm">
             <AlignButton
-              active={alignment === 'left'}
+              active={currentAlignment === 'left'}
               onClick={() => handleAlignment('left')}
               title="왼쪽 정렬"
             >
               <AlignLeft className="size-3.5" />
             </AlignButton>
             <AlignButton
-              active={alignment === 'center'}
+              active={currentAlignment === 'center'}
               onClick={() => handleAlignment('center')}
               title="가운데 정렬"
             >
               <AlignCenter className="size-3.5" />
             </AlignButton>
             <AlignButton
-              active={alignment === 'right'}
+              active={currentAlignment === 'right'}
               onClick={() => handleAlignment('right')}
               title="오른쪽 정렬"
             >
@@ -278,7 +319,13 @@ function AlignButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      // [수정] click보다 먼저 실행해 contenteditable 선택 변경을 방지한다.
+      onMouseDown={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onClick()
+      }}
+      onClick={(event) => event.stopPropagation()}
       title={title}
       className={`p-1 rounded transition-colors ${
         active
