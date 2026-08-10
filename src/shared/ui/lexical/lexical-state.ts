@@ -14,7 +14,15 @@ function isCodeLikeParagraph(text: string): boolean {
   const value = text.trim()
   return /^(docker compose|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|SELECT\b|INSERT\b|UPDATE\b|DELETE\b)/i.test(value) ||
     /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build|healthcheck|[A-Z][A-Z0-9_]+):/.test(value) ||
-    /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value)
+    /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value) ||
+    /^-\s+/.test(value)
+}
+
+function isCodeContinuation(text: string): boolean {
+  const value = text.trim()
+  return /^-\s+/.test(value) ||
+    /^[A-Z][A-Z0-9_]+\s*:/.test(value) ||
+    /^[A-Za-z][A-Za-z0-9_.-]*\s*:/.test(value)
 }
 
 function mergeCodeNodes(nodes: Record<string, unknown>[]): Record<string, unknown>[] {
@@ -60,6 +68,7 @@ function promoteDocumentStructure(root: Record<string, unknown>): Record<string,
   if (!Array.isArray(root.children)) return root
   const output: Record<string, unknown>[] = []
   let codeLines: string[] = []
+  let codeMode = false
 
   const flushCode = () => {
     if (codeLines.length === 0) return
@@ -79,14 +88,23 @@ function promoteDocumentStructure(root: Record<string, unknown>): Record<string,
       const text = nodeText(node)
       if (/^\d+[.)]\s+/.test(text.trim())) {
         flushCode()
+        codeMode = false
         output.push({ ...node, type: 'heading', tag: 'h2' })
         return
       }
-      if (isCodeLikeParagraph(text)) {
+      if (isCodeLikeParagraph(text) || (codeMode && isCodeContinuation(text))) {
         codeLines.push(text)
+        codeMode = true
         return
       }
     }
+    if (node.type === 'code') {
+      flushCode()
+      output.push(node)
+      codeMode = true
+      return
+    }
+    codeMode = false
     flushCode()
     output.push(node)
   })
