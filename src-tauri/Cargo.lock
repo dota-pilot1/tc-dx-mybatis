@@ -4227,7 +4227,7 @@ dependencies = [
 
 [[package]]
 name = "tc-dx-mybatis"
-version = "0.1.21"
+version = "0.1.22"
 dependencies = [
  "serde",
  "serde_json",
