@@ -3,6 +3,7 @@ import {
   Bell,
   Check,
   HardDriveDownload,
+  KeyRound,
   LayoutGrid,
   RefreshCw,
   Settings2,
@@ -21,8 +22,9 @@ import { RAIL_THEMES } from "../../shared/lib/rail-themes";
 import type { useAppUpdate } from "../../shared/lib/useAppUpdate";
 import MenuManagementSettings from "./MenuManagementSettings";
 import { downloadDatabaseBackup } from "../../features/database-backup/api";
+import { listAiKeyStatuses, removeAiKey, saveAiKey, testAiKey, type AiKeyStatus } from "../../features/ai-settings/api";
 
-type SettingsTab = "general" | "menu" | "update" | "users" | "backup";
+type SettingsTab = "general" | "menu" | "update" | "users" | "backup" | "ai";
 
 const SETTINGS_TABS: Array<{
   id: SettingsTab;
@@ -34,6 +36,7 @@ const SETTINGS_TABS: Array<{
   { id: "update", label: "업데이트 체크", icon: RefreshCw },
   { id: "users", label: "사용자 관리", icon: Users },
   { id: "backup", label: "DB 백업", icon: HardDriveDownload },
+  { id: "ai", label: "AI 설정", icon: KeyRound },
 ];
 
 type SettingsPageProps = {
@@ -103,12 +106,110 @@ function SettingsPage({ user, appUpdate }: SettingsPageProps) {
               <UpdateSettings appUpdate={appUpdate} />
             ) : activeTab === "backup" ? (
               <DatabaseBackupSettings />
+            ) : activeTab === "ai" ? (
+              <AiSettings />
             ) : (
               <UserManagementSettings user={user} />
             )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AiSettings() {
+  const [status, setStatus] = useState<AiKeyStatus | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await listAiKeyStatuses();
+      setStatus(rows.find((row) => row.provider === "openai") ?? null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "AI 설정을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function save() {
+    if (!apiKey.trim()) return;
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const next = await saveAiKey("openai", apiKey.trim());
+      setStatus(next);
+      setApiKey("");
+      setMessage("OpenAI API 키를 암호화해 저장했습니다.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "AI API 키를 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function test() {
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await testAiKey("openai");
+      setMessage("OpenAI API 연결이 정상입니다.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "AI API 연결 테스트에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm("등록한 OpenAI API 키를 삭제할까요?")) return;
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await removeAiKey("openai");
+      setStatus(null);
+      setMessage("등록한 OpenAI API 키를 삭제했습니다. 서버 기본 키가 있으면 기본 키를 사용합니다.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "AI API 키를 삭제하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      <SettingsSection icon={<KeyRound className="size-4" />} title="AI API 설정" description="사용자별 AI API 키를 암호화해 저장하고 AI 기능에 사용합니다.">
+        {loading ? <p className="text-sm font-semibold text-text-muted">AI 설정을 불러오는 중입니다.</p> : <div className="space-y-4">
+          <div className="rounded-md border border-brand-border bg-brand-glass px-4 py-3 text-[12px] leading-5 text-text-secondary">
+            API 키는 화면에 다시 표시하지 않고 서버에서 AES-256-GCM으로 암호화해 저장합니다. 키가 없으면 서버 기본 키가 설정된 경우 기본 키를 사용합니다.
+          </div>
+          <div className="flex items-center justify-between gap-3 border-b border-surface-border-soft pb-4">
+            <div><p className="text-[13px] font-bold text-text-primary">OpenAI</p><p className="mt-1 text-[12px] text-text-secondary">{status ? `등록됨 (${status.keyHint})` : "개인 API 키가 등록되지 않았습니다."}</p></div>
+            {status ? <span className="rounded-full border border-brand-border bg-brand-glass px-2 py-1 text-[11px] font-black text-brand-primary">사용 가능</span> : <span className="rounded-full border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-black text-text-muted">미등록</span>}
+          </div>
+          <label className="block text-[13px] font-bold text-text-primary">새 API 키 등록 또는 교체<input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} className="ui-input mt-1 h-10 text-sm" placeholder="sk-..." autoComplete="off" disabled={busy} /></label>
+          <div className="flex flex-wrap justify-end gap-2">
+            {status && <><button type="button" onClick={() => void test()} disabled={busy} className="ui-icon-button h-9 px-3 text-xs font-black">연결 테스트</button><button type="button" onClick={() => void remove()} disabled={busy} className="rounded-md border border-[var(--destructive)] px-3 py-2 text-xs font-black text-[var(--destructive)]">삭제</button></>}
+            <button type="button" onClick={() => void save()} disabled={busy || !apiKey.trim()} className="rounded-md bg-brand-primary px-3 py-2 text-xs font-black text-text-on-brand disabled:cursor-not-allowed disabled:opacity-40">{busy ? "처리 중..." : "암호화 저장"}</button>
+          </div>
+          {message && <p className="text-[12px] font-semibold text-brand-primary">{message}</p>}
+          {error && <p className="rounded-md border border-[var(--destructive)] bg-danger-glass px-3 py-2 text-[12px] font-semibold text-[var(--destructive)]">{error}</p>}
+        </div>}
+      </SettingsSection>
     </div>
   );
 }

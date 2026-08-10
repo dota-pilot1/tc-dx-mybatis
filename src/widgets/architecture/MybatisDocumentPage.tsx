@@ -1,4 +1,4 @@
-import { ArrowLeft, CloudCog, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, CloudCog, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import PageHeader from "../../shared/ui/PageHeader";
 import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
@@ -6,6 +6,7 @@ import {
   listArchitecturePlaybook,
   type ArchitecturePlaybookDocument,
 } from "../../features/mybatis-playbook/api";
+import MybatisDocumentAiEditDialog from "./MybatisDocumentAiEditDialog";
 
 type Props = {
   documentId: string;
@@ -31,6 +32,7 @@ export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDel
   const [result, setResult] = useState<ReturnType<typeof findDocument>>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [aiEditOpen, setAiEditOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -74,6 +76,9 @@ export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDel
                 <button type="button" onClick={() => onDelete(document)} className="ui-icon-button h-8 w-8 text-[var(--destructive)]" title="문서 삭제" aria-label="문서 삭제">
                   <Trash2 className="size-3.5" />
                 </button>
+                <button type="button" onClick={() => setAiEditOpen(true)} className="ui-icon-button-brand h-8 w-8" title="AI로 문서 편집" aria-label="AI로 문서 편집">
+                  <Sparkles className="size-3.5" />
+                </button>
                 <button type="button" onClick={() => void load()} className="ui-icon-button h-8 w-8" title="문서 새로고침" aria-label="문서 새로고침">
                   <RefreshCw className="size-3.5" />
                 </button>
@@ -99,6 +104,18 @@ export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDel
           )}
         </main>
       </div>
+      {aiEditOpen && document && (
+        <MybatisDocumentAiEditDialog
+          documentId={document.id}
+          title={document.title}
+          initialContent={document.content}
+          onClose={() => setAiEditOpen(false)}
+          onSaved={() => {
+            setAiEditOpen(false);
+            void load();
+          }}
+        />
+      )}
     </div>
   );
 }

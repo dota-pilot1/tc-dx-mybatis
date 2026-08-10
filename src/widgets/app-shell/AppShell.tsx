@@ -31,6 +31,7 @@ import { getRailTheme } from "../../shared/lib/rail-themes";
 import { useAppUpdate } from "../../shared/lib/useAppUpdate";
 import { APP_MODULES, isAppModuleId, type AppModuleId } from "../../shared/config/app-modules";
 import { APP_PROFILE } from "../../shared/config/app-profile";
+import { ContentRefreshProvider } from "../../shared/lib/content-refresh";
 
 type Props = {
   user: User;
@@ -57,6 +58,9 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
   >(null);
   const [prototypeNoteMenuKey, setPrototypeNoteMenuKey] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [contentRefreshKey, setContentRefreshKey] = useState(0);
+  const [isRefreshingContent, setIsRefreshingContent] = useState(false);
+  const refreshTimerRef = useRef<number | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const moduleOrder = useAppSettingsStore((s) => s.moduleOrder);
   const hiddenModuleIds = useAppSettingsStore((s) => s.hiddenModuleIds);
@@ -119,12 +123,26 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
     selectView(id);
   }
 
+  function refreshContent() {
+    if (isRefreshingContent) return;
+    setIsRefreshingContent(true);
+    setContentRefreshKey((key) => key + 1);
+    refreshTimerRef.current = window.setTimeout(() => {
+      setIsRefreshingContent(false);
+      refreshTimerRef.current = null;
+    }, 650);
+  }
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       appUpdate.checkOnceOnStartup();
     }, 10_000);
     return () => window.clearTimeout(timer);
   }, [appUpdate.checkOnceOnStartup]);
+
+  useEffect(() => () => {
+    if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -331,7 +349,11 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
         </div>
       </nav>
 
-      <div className="flex min-w-0 flex-1">
+      <ContentRefreshProvider value={{ refresh: refreshContent, isRefreshing: isRefreshingContent }}>
+        <div
+          key={contentRefreshKey}
+          className={`flex min-w-0 flex-1 transition-opacity duration-300 ${isRefreshingContent ? "opacity-60" : "opacity-100"}`}
+        >
         {active === "home" ? (
           <HomePage
             user={user}
@@ -406,7 +428,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
         ) : (
           <CommerceToolkitModule moduleId={active} />
         )}
-      </div>
+        </div>
+      </ContentRefreshProvider>
 
       <div className="pointer-events-none absolute right-0 top-0 z-50 flex h-12 items-center pr-2">
         <div className="pointer-events-auto">
