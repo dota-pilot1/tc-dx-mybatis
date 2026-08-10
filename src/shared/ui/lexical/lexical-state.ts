@@ -12,7 +12,7 @@ function nodeText(node: Record<string, unknown>): string {
 
 function isCodeLikeParagraph(text: string): boolean {
   const value = text.trim()
-  return /^(docker compose|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|SELECT\b|INSERT\b|UPDATE\b|DELETE\b)/i.test(value) ||
+  return /^(docker\s+|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|SELECT\b|INSERT\b|UPDATE\b|DELETE\b)/i.test(value) ||
     /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build|healthcheck|[A-Z][A-Z0-9_]+):/.test(value) ||
     /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value) ||
     /^-\s+/.test(value)
