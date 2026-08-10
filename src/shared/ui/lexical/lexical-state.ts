@@ -17,7 +17,7 @@ function nodeText(node: Record<string, unknown>): string {
 function isCodeLikeParagraph(text: string): boolean {
   return text.split(/\r?\n/).some((line) => {
     const value = line.trim()
-    return /^(docker\s+|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|SELECT\b|INSERT\b|UPDATE\b|DELETE\b)/i.test(value) ||
+    return /^(docker\s+|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|import |package |public |private |protected |class |interface |enum |return |List<|SELECT\b|INSERT\b|UPDATE\b|DELETE\b|@[A-Za-z])/i.test(value) ||
       /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build|healthcheck|[A-Z][A-Z0-9_]+):/.test(value) ||
       /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value) ||
       /^-\s+/.test(value)
@@ -28,7 +28,8 @@ function isCodeContinuation(text: string): boolean {
   const value = text.trim()
   return /^-\s+/.test(value) ||
     /^[A-Z][A-Z0-9_]+\s*:/.test(value) ||
-    /^[A-Za-z][A-Za-z0-9_.-]*\s*:/.test(value)
+    /^[A-Za-z][A-Za-z0-9_.-]*\s*:/.test(value) ||
+    /^(?:int|long|boolean|String|List<|Set<|Map<|return\b|\.|[{}();])/.test(value)
 }
 
 function mergeCodeNodes(nodes: Record<string, unknown>[]): Record<string, unknown>[] {
