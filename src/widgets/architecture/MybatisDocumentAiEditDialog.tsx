@@ -12,15 +12,7 @@ type Props = {
   onSaved: () => void;
 };
 
-const DEFAULT_INSTRUCTION = `
-기존 서식은 모두 무시하고 문서 내용을 누락 없이 처음부터 다시 정리해줘.
-각 항목을 반드시 "제목 → 파일 경로(있는 경우에만) → 내용" 순서의 단위로 정리해줘. 파일 경로가 없으면 그 항목은 생략해줘.
-제목과 소제목은 Heading으로 작성하고, 설명과 안내는 일반 문단으로 작성해줘.
-내용이 실행 명령어, 코드, SQL, YAML, JSON, docker-compose 설정, 긴 URL이면 관련된 전체 내용을 하나의 실제 Lexical 코드 블럭(CodeNode)으로 묶어줘.
-하나의 내용이 여러 줄로 구성된 경우 줄바꿈과 들여쓰기를 유지하고, 여러 개의 작은 코드 블럭으로 쪼개지 않게 해줘.
-제목, 파일 경로, 설명 문장은 코드 블럭으로 만들지 말고, 문서 내용을 다른 항목과 섞거나 순서를 바꾸지 말아줘.
-문장 전체에 인라인 코드, 글자색, 폰트색을 적용하지 말고, 코드가 아닌 스펙 항목은 일반 문장이나 목록으로 작성해줘.
-`.trim();
+const DEFAULT_INSTRUCTION = "제목, 파일(없으면 생략), 코드 이런 단위로 나눠서 정리해줘. 내용은 코드 블록으로 처리해서 깔끔하게";
 
 export default function MybatisDocumentAiEditDialog({
   documentId,

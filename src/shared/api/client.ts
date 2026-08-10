@@ -56,6 +56,7 @@ type RequestOptions = {
   body?: unknown;
   token?: string | null;
   errorMessage?: string;
+  timeoutMs?: number;
 };
 
 export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -63,16 +64,30 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
 
+  const controller = opts.timeoutMs ? new AbortController() : undefined;
+  const timeoutId = opts.timeoutMs && controller
+    ? window.setTimeout(() => controller.abort(), opts.timeoutMs)
+    : undefined;
   const request = {
     method: opts.method ?? "GET",
     headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    signal: controller?.signal,
   };
   const url = `${getApiBase()}${path}`;
-  const res =
-    "__TAURI_INTERNALS__" in window
+  let res: Response;
+  try {
+    res = "__TAURI_INTERNALS__" in window
       ? await tauriFetch(url, request)
       : await globalThis.fetch(url, request);
+  } catch (reason) {
+    if (controller?.signal.aborted) {
+      throw new ApiError("AI 응답 시간이 초과되었습니다. 문서를 나눠서 다시 시도해 주세요.", 408);
+    }
+    throw reason;
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  }
 
   const text = await res.text();
 
