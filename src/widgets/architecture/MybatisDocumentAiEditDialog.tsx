@@ -30,6 +30,7 @@ export default function MybatisDocumentAiEditDialog({
   const [content, setContent] = useState(initialContent);
   const [instruction, setInstruction] = useState(DEFAULT_INSTRUCTION);
   const [revision, setRevision] = useState(0);
+  const [formattingReset, setFormattingReset] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -49,6 +50,7 @@ export default function MybatisDocumentAiEditDialog({
         throw new Error("AI가 올바른 Lexical 문서 형식으로 결과를 만들지 못했습니다. 요구사항을 조금 더 구체적으로 입력해 주세요.");
       }
       setContent(normalizedContent);
+      setFormattingReset(false);
       setRevision((current) => current + 1);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "AI 편집에 실패했습니다.");
@@ -74,6 +76,7 @@ export default function MybatisDocumentAiEditDialog({
     const reset = resetLexicalFormatting(content);
     if (!reset) return;
     setContent(reset);
+    setFormattingReset(true);
     setRevision((current) => current + 1);
     setError("");
   }
@@ -137,6 +140,7 @@ export default function MybatisDocumentAiEditDialog({
               minHeight="440px"
               scrollable
               height="min(52vh, 560px)"
+              promoteStructure={!formattingReset}
             />
           </section>
         </div>

@@ -17,6 +17,23 @@ function isCodeLikeParagraph(text: string): boolean {
     /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value)
 }
 
+function mergeCodeNodes(nodes: Record<string, unknown>[]): Record<string, unknown>[] {
+  const merged: Record<string, unknown>[] = []
+  nodes.forEach((node) => {
+    const previous = merged[merged.length - 1]
+    if (previous?.type === 'code' && node.type === 'code' && Array.isArray(previous.children) && Array.isArray(node.children)) {
+      const previousChild = previous.children[previous.children.length - 1] as Record<string, unknown> | undefined
+      const nextChild = node.children[0] as Record<string, unknown> | undefined
+      if (previousChild && nextChild) {
+        previousChild.text = `${String(previousChild.text ?? '')}\n${String(nextChild.text ?? '')}`
+        return
+      }
+    }
+    merged.push(node)
+  })
+  return merged
+}
+
 function promoteDocumentStructure(root: Record<string, unknown>): Record<string, unknown> {
   if (!Array.isArray(root.children)) return root
   const output: Record<string, unknown>[] = []
@@ -52,7 +69,7 @@ function promoteDocumentStructure(root: Record<string, unknown>): Record<string,
     output.push(node)
   })
   flushCode()
-  return { ...root, children: output }
+  return { ...root, children: mergeCodeNodes(output) }
 }
 
 function normalizedNode(value: unknown, parentType: string): Record<string, unknown> | null {
@@ -111,13 +128,13 @@ function normalizedNode(value: unknown, parentType: string): Record<string, unkn
   return { ...source, type, children: [] }
 }
 
-export function normalizeLexicalJson(value: string): string | null {
+export function normalizeLexicalJson(value: string, promoteStructure = true): string | null {
   try {
     const parsed = JSON.parse(value) as { root?: unknown }
     if (!parsed.root || typeof parsed.root !== 'object') return null
     const root = normalizedNode({ ...(parsed.root as Record<string, unknown>), type: 'root' }, 'root')
     if (!root || !Array.isArray(root.children)) return null
-    return JSON.stringify({ ...parsed, root: promoteDocumentStructure(root) })
+    return JSON.stringify({ ...parsed, root: promoteStructure ? promoteDocumentStructure(root) : root })
   } catch {
     return null
   }
@@ -144,7 +161,7 @@ function resetNodeFormatting(node: Record<string, unknown>): Record<string, unkn
 }
 
 export function resetLexicalFormatting(value: string): string | null {
-  const normalized = normalizeLexicalJson(value)
+  const normalized = normalizeLexicalJson(value, false)
   if (!normalized) return null
   try {
     const parsed = JSON.parse(normalized) as { root: Record<string, unknown> }

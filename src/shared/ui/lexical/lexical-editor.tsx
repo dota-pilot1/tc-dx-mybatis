@@ -56,6 +56,7 @@ type LexicalEditorProps = {
   scrollable?: boolean
   readOnly?: boolean
   toolbarVariant?: 'full' | 'simple'
+  promoteStructure?: boolean
 }
 
 // Number prefixes such as `1. ` remain plain text while typing.
@@ -447,6 +448,7 @@ export function LexicalEditor({
   scrollable = false,
   readOnly = false,
   toolbarVariant = 'full',
+  promoteStructure = true,
 }: LexicalEditorProps) {
   const handleChange = useCallback(
     (editorState: EditorState) => {
@@ -462,7 +464,7 @@ export function LexicalEditor({
       theme: editorTheme,
       editable: !readOnly,
       editorState:
-        initialState ? normalizeLexicalJson(initialState) ?? undefined : undefined,
+        initialState ? normalizeLexicalJson(initialState, promoteStructure) ?? undefined : undefined,
       nodes: [
         HeadingNode,
         QuoteNode,
@@ -485,7 +487,7 @@ export function LexicalEditor({
     }),
     // initialState is only used as the mount seed; block remount churn while typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [readOnly],
+    [readOnly, promoteStructure],
   )
 
   return (
