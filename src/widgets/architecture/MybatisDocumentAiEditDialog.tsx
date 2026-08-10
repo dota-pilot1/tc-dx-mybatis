@@ -1,7 +1,8 @@
 import { Eraser, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { aiEditArchitectureDocument, updateArchitectureDocument } from "../../features/mybatis-playbook/api";
-import { LexicalEditor, normalizeLexicalJson, resetLexicalFormatting } from "../../shared/ui/lexical/lexical-editor";
+import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
+import { normalizeLexicalJson, resetLexicalFormatting } from "../../shared/ui/lexical/lexical-state";
 
 type Props = {
   documentId: string;
