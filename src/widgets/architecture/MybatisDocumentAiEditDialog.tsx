@@ -12,7 +12,10 @@ type Props = {
   onSaved: () => void;
 };
 
-const DEFAULT_INSTRUCTION = "제목(번호를 붙여 1. 제목 형식으로 작성하고 조금 큰 글씨와 진한 글씨로 표시), 파일(없으면 생략), 코드 이런 단위로 나눠서 정리해줘. 내용은 코드 블록으로 처리해서 깔끔하게";
+const INSTRUCTION_PRESETS = [
+  "제목, 파일(없으면 생략), 코드 이런 단위로 나눠서 정리해줘. 내용은 코드 블록으로 처리해서 깔끔하게",
+  "제목(번호를 붙여 1. 제목 형식으로 작성하고 조금 큰 글씨와 진한 글씨로 표시), 파일(없으면 생략), 코드 이런 단위로 나눠서 정리해줘. 내용은 코드 블록으로 처리해서 깔끔하게",
+] as const;
 
 export default function MybatisDocumentAiEditDialog({
   documentId,
@@ -22,7 +25,8 @@ export default function MybatisDocumentAiEditDialog({
   onSaved,
 }: Props) {
   const [content, setContent] = useState(initialContent);
-  const [instruction, setInstruction] = useState(DEFAULT_INSTRUCTION);
+  const [activePreset, setActivePreset] = useState(1);
+  const [instruction, setInstruction] = useState(INSTRUCTION_PRESETS[1]);
   const [revision, setRevision] = useState(0);
   const [formattingReset, setFormattingReset] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -95,6 +99,30 @@ export default function MybatisDocumentAiEditDialog({
           <section className="rounded-lg border border-brand-border bg-brand-glass p-4">
             <label htmlFor="mybatis-ai-edit-instruction" className="text-sm font-black text-text-primary">편집 요구사항</label>
             <p className="mt-1 text-xs font-semibold leading-5 text-text-secondary">현재 본문에서 원하는 수정 내용을 구체적으로 입력하세요. 결과는 아래 편집창에 반영되며, 검토 후 저장할 수 있습니다.</p>
+            <div className="mt-3 flex items-center gap-1 border-b border-surface-border-soft">
+              {["기본 지시1", "기본 지시2", "기본 지시3"].map((label, index) => {
+                const available = index < INSTRUCTION_PRESETS.length;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={!available || busy || saving}
+                    onClick={() => {
+                      if (!available) return;
+                      setActivePreset(index);
+                      setInstruction(INSTRUCTION_PRESETS[index]);
+                    }}
+                    className={`border-b-2 px-3 py-2 text-xs font-black transition-colors ${
+                      activePreset === index && available
+                        ? "border-brand-primary text-brand-primary"
+                        : "border-transparent text-text-muted hover:text-text-primary"
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {label}{!available ? " (작성 예정)" : ""}
+                  </button>
+                );
+              })}
+            </div>
             <div className="mt-3 flex gap-2">
               <textarea
                 id="mybatis-ai-edit-instruction"
