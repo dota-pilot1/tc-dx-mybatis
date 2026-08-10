@@ -258,7 +258,11 @@ export function preservesLexicalContent(source: string, result: string): boolean
     if (sourceText.length < 80) return resultText.length > 0
     const hasSourceCode = /\b(public|private|protected|class|interface|SELECT|docker|import)\b/i.test(sourceText)
     const hasResultCode = /\b(public|private|protected|class|interface|SELECT|docker|import)\b/i.test(resultText)
-    return resultText.length >= Math.min(160, Math.floor(sourceText.length * 0.35)) && (!hasSourceCode || hasResultCode)
+    // 문서 전체 길이와 비교하면 제목·설명까지 포함되어 정상적인 코드 결과도
+    // 누락으로 오판할 수 있다. 코드 문서에서는 코드 토큰이 남아 있는지만
+    // 확인하고, 일반 문서는 최소한의 결과 텍스트만 검증한다.
+    if (hasSourceCode) return hasResultCode && resultText.length >= 40
+    return resultText.length >= Math.min(80, Math.floor(sourceText.length * 0.2))
   } catch {
     return false
   }
