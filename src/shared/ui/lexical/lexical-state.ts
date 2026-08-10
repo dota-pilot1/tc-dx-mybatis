@@ -32,14 +32,46 @@ function isCodeContinuation(text: string): boolean {
     /^(?:int|long|boolean|String|List<|Set<|Map<|return\b|\.|[{}();])/.test(value)
 }
 
+function restoreJavaCodeLayout(text: string): string {
+  if (!/(?:public|private|protected)\s+[\w<>,?\[\]]+\s+\w+\s*\(|@(?:Transactional|Override)|\.stream\(\)/.test(text)) {
+    return text
+  }
+  // 이미 줄바꿈이 정상적으로 들어온 코드는 건드리지 않는다. AI 응답이
+  // 한 줄로 접힌 경우에만 아래의 보정 로직을 적용한다.
+  const lines = text.split(/\r?\n/)
+  if (lines.length > 1 && !lines.some((line) => line.length > 180)) return text
+  const stringLiterals: string[] = []
+  const protectedText = text.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, (literal) => {
+    const token = `__LEXICAL_STRING_${stringLiterals.length}__`
+    stringLiterals.push(literal)
+    return token
+  })
+  const expanded = protectedText
+    .replace(/\s*\{\s*/g, ' {\n')
+    .replace(/\s*;\s*/g, ';\n')
+    .replace(/\s*\}\s*/g, '\n}\n')
+    .replace(/\s+(?=@(?:Transactional|Override)|(?:public|private|protected)\s)/g, '\n')
+  let indent = 0
+  return expanded
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      if (line.startsWith('}')) indent = Math.max(0, indent - 1)
+      const result = `${'    '.repeat(indent)}${line}`
+      if (line.endsWith('{')) indent += 1
+      return result
+    })
+    .join('\n')
+    .replace(/__LEXICAL_STRING_(\d+)__/g, (_, index: string) => stringLiterals[Number(index)] ?? '')
+}
+
 function mergeCodeNodes(nodes: Record<string, unknown>[]): Record<string, unknown>[] {
   const merged: Record<string, unknown>[] = []
   let pendingBlankParagraphs: Record<string, unknown>[] = []
 
   const codeText = (node: Record<string, unknown>) =>
-    Array.isArray(node.children)
-      ? node.children.map((child) => child && typeof child === 'object' ? String((child as Record<string, unknown>).text ?? '') : '').join('')
-      : ''
+    nodeText(node)
 
   const isBlankParagraph = (node: Record<string, unknown>) =>
     node.type === 'paragraph' && nodeText(node).trim() === ''
@@ -79,7 +111,7 @@ function promoteDocumentStructure(root: Record<string, unknown>): Record<string,
 
   const flushCode = () => {
     if (codeLines.length === 0) return
-    const source = codeLines.join('\n')
+    const source = restoreJavaCodeLayout(codeLines.join('\n'))
     const language = /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build):/m.test(source) || source.includes('docker-compose') ? 'yaml' : 'plaintext'
     output.push({
       type: 'code', language, theme: null, direction: null, format: '', indent: 0, version: 1,
@@ -176,6 +208,24 @@ function normalizedNode(value: unknown, parentType: string): Record<string, unkn
         }
       }
     }
+    if (type === 'code' && children.length > 0) {
+      const codeChildren = children.filter((child) => child.type === 'code-highlight' || child.type === 'text')
+      const sourceText = nodeText(source)
+      const formattedText = restoreJavaCodeLayout(sourceText)
+      if (formattedText !== sourceText) {
+        const firstCodeChild = codeChildren[0]
+        return {
+          ...source,
+          type,
+          children: [{
+            ...(firstCodeChild ?? { type: 'code-highlight', detail: 0, format: 0, mode: 'normal', style: '', version: 1 }),
+            type: 'code-highlight',
+            format: 0,
+            text: formattedText,
+          }],
+        }
+      }
+    }
     return { ...source, type, children }
   }
   return { ...source, type, children: [] }
@@ -200,7 +250,7 @@ function resetNodeFormatting(node: Record<string, unknown>): Record<string, unkn
   }
   if (type === 'code') {
     const text = Array.isArray(node.children)
-      ? node.children.map((child) => (child && typeof child === 'object' ? String((child as Record<string, unknown>).text ?? '') : '')).join('')
+      ? nodeText(node)
       : ''
     return {
       type: 'paragraph', direction: null, format: '', indent: 0, version: 1,
