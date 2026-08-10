@@ -19,18 +19,40 @@ function isCodeLikeParagraph(text: string): boolean {
 
 function mergeCodeNodes(nodes: Record<string, unknown>[]): Record<string, unknown>[] {
   const merged: Record<string, unknown>[] = []
+  let pendingBlankParagraphs: Record<string, unknown>[] = []
+
+  const codeText = (node: Record<string, unknown>) =>
+    Array.isArray(node.children)
+      ? node.children.map((child) => child && typeof child === 'object' ? String((child as Record<string, unknown>).text ?? '') : '').join('')
+      : ''
+
+  const isBlankParagraph = (node: Record<string, unknown>) =>
+    node.type === 'paragraph' && nodeText(node).trim() === ''
+
   nodes.forEach((node) => {
     const previous = merged[merged.length - 1]
+    // AI 결과가 코드 한 줄마다 별도 CodeNode로 오거나, 그 사이에 빈 문단을
+    // 끼워 넣어도 하나의 의미 단위(파일 경로 + 코드 내용)로 합친다.
+    if (isBlankParagraph(node) || (node.type === 'code' && codeText(node) === '')) {
+      pendingBlankParagraphs.push(node)
+      return
+    }
     if (previous?.type === 'code' && node.type === 'code' && Array.isArray(previous.children) && Array.isArray(node.children)) {
       const previousChild = previous.children[previous.children.length - 1] as Record<string, unknown> | undefined
       const nextChild = node.children[0] as Record<string, unknown> | undefined
       if (previousChild && nextChild) {
-        previousChild.text = `${String(previousChild.text ?? '')}\n${String(nextChild.text ?? '')}`
+        previousChild.text = `${String(previousChild.text ?? '')}${'\n'.repeat(Math.max(1, pendingBlankParagraphs.length + 1))}${codeText(node)}`
+        pendingBlankParagraphs = []
         return
       }
     }
+    if (pendingBlankParagraphs.length > 0) {
+      merged.push(...pendingBlankParagraphs)
+      pendingBlankParagraphs = []
+    }
     merged.push(node)
   })
+  if (pendingBlankParagraphs.length > 0) merged.push(...pendingBlankParagraphs)
   return merged
 }
 
