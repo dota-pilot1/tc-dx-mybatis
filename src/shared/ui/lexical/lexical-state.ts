@@ -281,6 +281,31 @@ export function preservesLexicalContent(source: string, result: string): boolean
   }
 }
 
+export function addLexicalHeadingNumbers(value: string): string | null {
+  try {
+    const parsed = JSON.parse(value) as { root?: Record<string, unknown> }
+    const root = parsed.root
+    if (!root || !Array.isArray(root.children)) return null
+    let number = 1
+    const children = root.children.map((child) => {
+      if (!child || typeof child !== 'object') return child
+      const node = child as Record<string, unknown>
+      if (node.type !== 'heading' || !Array.isArray(node.children)) return child
+      const text = nodeText(node).trim().replace(/^\d+[.)]\s+/, '')
+      if (!text) return child
+      number += 1
+      return {
+        ...node,
+        tag: 'h2',
+        children: [{ type: 'text', detail: 0, format: 1, mode: 'normal', style: '', text: `${number - 1}. ${text}`, version: 1 }],
+      }
+    })
+    return JSON.stringify({ ...parsed, root: { ...root, children } })
+  } catch {
+    return null
+  }
+}
+
 function resetNodeFormatting(node: Record<string, unknown>): Record<string, unknown> {
   const type = node.type
   if (type === 'text' || type === 'code-highlight') {

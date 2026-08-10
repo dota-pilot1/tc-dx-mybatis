@@ -2,7 +2,7 @@ import { Eraser, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { aiEditArchitectureDocument, updateArchitectureDocument } from "../../features/mybatis-playbook/api";
 import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
-import { normalizeLexicalJson, preservesLexicalContent, resetLexicalFormatting } from "../../shared/ui/lexical/lexical-state";
+import { addLexicalHeadingNumbers, normalizeLexicalJson, preservesLexicalContent, resetLexicalFormatting } from "../../shared/ui/lexical/lexical-state";
 
 type Props = {
   documentId: string;
@@ -49,15 +49,21 @@ export default function MybatisDocumentAiEditDialog({
       if (!normalizedContent) {
         throw new Error("AI가 올바른 Lexical 문서 형식으로 결과를 만들지 못했습니다. 요구사항을 조금 더 구체적으로 입력해 주세요.");
       }
-      if (!preservesLexicalContent(sourceContent, normalizedContent)) {
-        const fallbackContent = normalizeLexicalJson(sourceContent) ?? content;
+      const numberedContent = instruction.includes("번호")
+        ? addLexicalHeadingNumbers(normalizedContent) ?? normalizedContent
+        : normalizedContent;
+      if (!preservesLexicalContent(sourceContent, numberedContent)) {
+        const fallbackBase = normalizeLexicalJson(sourceContent) ?? content;
+        const fallbackContent = instruction.includes("번호")
+          ? addLexicalHeadingNumbers(fallbackBase) ?? fallbackBase
+          : fallbackBase;
         setContent(fallbackContent);
         setFormattingReset(false);
         setRevision((current) => current + 1);
         setNotice("AI 결과가 불완전해 원문을 유지하고 요청한 서식만 적용했습니다.");
         return;
       }
-      setContent(normalizedContent);
+      setContent(numberedContent);
       setFormattingReset(false);
       setRevision((current) => current + 1);
     } catch (reason) {
