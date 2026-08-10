@@ -39,7 +39,7 @@ function restoreJavaCodeLayout(text: string): string {
   // 이미 줄바꿈이 정상적으로 들어온 코드는 건드리지 않는다. AI 응답이
   // 한 줄로 접힌 경우에만 아래의 보정 로직을 적용한다.
   const lines = text.split(/\r?\n/)
-  if (lines.length > 1 && !lines.some((line) => line.length > 180)) return text
+  if (lines.length > 1 && !lines.some((line) => line.length > 180)) return addJavaMethodSpacing(text)
   const stringLiterals: string[] = []
   const protectedText = text.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, (literal) => {
     const token = `__LEXICAL_STRING_${stringLiterals.length}__`
@@ -52,7 +52,7 @@ function restoreJavaCodeLayout(text: string): string {
     .replace(/\s*\}\s*/g, '\n}\n')
     .replace(/\s+(?=@(?:Transactional|Override)|(?:public|private|protected)\s)/g, '\n')
   let indent = 0
-  return expanded
+  return addJavaMethodSpacing(expanded
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
@@ -63,7 +63,20 @@ function restoreJavaCodeLayout(text: string): string {
       return result
     })
     .join('\n')
-    .replace(/__LEXICAL_STRING_(\d+)__/g, (_, index: string) => stringLiterals[Number(index)] ?? '')
+    .replace(/__LEXICAL_STRING_(\d+)__/g, (_, index: string) => stringLiterals[Number(index)] ?? ''))
+}
+
+function addJavaMethodSpacing(text: string): string {
+  if (!/@(?:GetMapping|PostMapping|PutMapping|DeleteMapping|Transactional|Override)|\b(?:public|private|protected)\s+/.test(text)) return text
+  const output: string[] = []
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    const startsMethod = /^(?:@(?:GetMapping|PostMapping|PutMapping|DeleteMapping|Transactional|Override)|(?:public|private|protected)\s+)/.test(trimmed)
+    const previous = output[output.length - 1]?.trim()
+    if (startsMethod && previous === '}') output.push('')
+    output.push(line)
+  }
+  return output.join('\n')
 }
 
 function mergeCodeNodes(nodes: Record<string, unknown>[]): Record<string, unknown>[] {
