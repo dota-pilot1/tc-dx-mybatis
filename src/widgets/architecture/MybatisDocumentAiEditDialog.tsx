@@ -53,7 +53,13 @@ export default function MybatisDocumentAiEditDialog({
         ? addLexicalHeadingNumbers(normalizedContent) ?? normalizedContent
         : normalizedContent;
       if (!preservesLexicalContent(sourceContent, numberedContent)) {
-        const fallbackBase = normalizeLexicalJson(sourceContent) ?? content;
+        // AI 요청용으로 서식을 초기화한 문자열을 fallback으로 쓰면, 그
+        // 과정에서 손실된 코드까지 복구할 수 없다. 항상 요청 전 원본에서
+        // 복원한다.
+        const normalizedOriginal = normalizeLexicalJson(content);
+        const fallbackBase = normalizedOriginal && preservesLexicalContent(content, normalizedOriginal)
+          ? normalizedOriginal
+          : content;
         const fallbackContent = instruction.includes("번호")
           ? addLexicalHeadingNumbers(fallbackBase) ?? fallbackBase
           : fallbackBase;
