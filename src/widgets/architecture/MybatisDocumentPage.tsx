@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CloudCog, ExternalLink, Link as LinkIcon, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, CloudCog, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import PageHeader from "../../shared/ui/PageHeader";
 import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
@@ -31,7 +31,6 @@ export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDel
   const [result, setResult] = useState<ReturnType<typeof findDocument>>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -51,12 +50,6 @@ export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDel
   useEffect(() => {
     void load();
   }, [documentId]);
-
-  async function copyPageLink() {
-    await navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  }
 
   const document = result?.document as ArchitecturePlaybookDocument | undefined;
 
@@ -81,9 +74,6 @@ export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDel
                 <button type="button" onClick={() => onDelete(document)} className="ui-icon-button h-8 w-8 text-[var(--destructive)]" title="문서 삭제" aria-label="문서 삭제">
                   <Trash2 className="size-3.5" />
                 </button>
-                <button type="button" onClick={() => void copyPageLink()} className="ui-icon-button h-8 w-8" title={copied ? "링크 복사됨" : "페이지 링크 복사"} aria-label={copied ? "링크 복사됨" : "페이지 링크 복사"}>
-                  {copied ? <Check className="size-3.5 text-brand-primary" /> : <LinkIcon className="size-3.5" />}
-                </button>
                 <button type="button" onClick={() => void load()} className="ui-icon-button h-8 w-8" title="문서 새로고침" aria-label="문서 새로고침">
                   <RefreshCw className="size-3.5" />
                 </button>
@@ -105,12 +95,6 @@ export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDel
               <div className="p-6">
                 <LexicalEditor key={document.id} initialState={document.content} onChange={() => undefined} readOnly minHeight="560px" />
               </div>
-              <footer className="flex items-center justify-between gap-3 border-t border-surface-border-soft bg-surface-muted px-6 py-3">
-                <span className="text-[11px] font-semibold text-text-muted">문서 페이지 링크를 복사해 팀원과 공유할 수 있습니다.</span>
-                <button type="button" onClick={() => void copyPageLink()} className="inline-flex items-center gap-1.5 text-xs font-black text-brand-primary">
-                  <ExternalLink className="size-3.5" /> {copied ? "복사됨" : "링크 복사"}
-                </button>
-              </footer>
             </article>
           )}
         </main>
