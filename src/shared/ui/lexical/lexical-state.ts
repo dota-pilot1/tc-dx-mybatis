@@ -4,6 +4,57 @@ const REGISTERED_NODE_TYPES = new Set([
   'tablecell', 'image', 'youtube', 'mermaid',
 ])
 
+function nodeText(node: Record<string, unknown>): string {
+  if (typeof node.text === 'string') return node.text
+  if (!Array.isArray(node.children)) return ''
+  return node.children.map((child) => child && typeof child === 'object' ? nodeText(child as Record<string, unknown>) : '').join('')
+}
+
+function isCodeLikeParagraph(text: string): boolean {
+  const value = text.trim()
+  return /^(docker compose|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|SELECT\b|INSERT\b|UPDATE\b|DELETE\b)/i.test(value) ||
+    /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build|healthcheck|[A-Z][A-Z0-9_]+):/.test(value) ||
+    /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value)
+}
+
+function promoteDocumentStructure(root: Record<string, unknown>): Record<string, unknown> {
+  if (!Array.isArray(root.children)) return root
+  const output: Record<string, unknown>[] = []
+  let codeLines: string[] = []
+
+  const flushCode = () => {
+    if (codeLines.length === 0) return
+    const source = codeLines.join('\n')
+    const language = /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build):/m.test(source) || source.includes('docker-compose') ? 'yaml' : 'plaintext'
+    output.push({
+      type: 'code', language, theme: null, direction: null, format: '', indent: 0, version: 1,
+      children: [{ type: 'code-highlight', detail: 0, format: 0, mode: 'normal', style: '', text: source, version: 1 }],
+    })
+    codeLines = []
+  }
+
+  root.children.forEach((child) => {
+    if (!child || typeof child !== 'object') return
+    const node = child as Record<string, unknown>
+    if (node.type === 'paragraph') {
+      const text = nodeText(node)
+      if (/^\d+[.)]\s+/.test(text.trim())) {
+        flushCode()
+        output.push({ ...node, type: 'heading', tag: 'h2' })
+        return
+      }
+      if (isCodeLikeParagraph(text)) {
+        codeLines.push(text)
+        return
+      }
+    }
+    flushCode()
+    output.push(node)
+  })
+  flushCode()
+  return { ...root, children: output }
+}
+
 function normalizedNode(value: unknown, parentType: string): Record<string, unknown> | null {
   if (!value || typeof value !== 'object') return null
   const source = value as { type?: unknown; text?: unknown; children?: unknown[]; [key: string]: unknown }
@@ -66,7 +117,7 @@ export function normalizeLexicalJson(value: string): string | null {
     if (!parsed.root || typeof parsed.root !== 'object') return null
     const root = normalizedNode({ ...(parsed.root as Record<string, unknown>), type: 'root' }, 'root')
     if (!root || !Array.isArray(root.children)) return null
-    return JSON.stringify({ ...parsed, root })
+    return JSON.stringify({ ...parsed, root: promoteDocumentStructure(root) })
   } catch {
     return null
   }
