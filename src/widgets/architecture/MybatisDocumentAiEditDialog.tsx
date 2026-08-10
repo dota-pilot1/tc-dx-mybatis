@@ -12,6 +12,14 @@ type Props = {
   onSaved: () => void;
 };
 
+const DEFAULT_INSTRUCTION = `
+기존 서식은 모두 무시하고 문서 내용을 누락 없이 처음부터 다시 정리해줘.
+제목과 소제목은 Heading으로, 설명과 안내는 일반 문단으로 작성해줘.
+실행 명령어, 코드, SQL, YAML, JSON, docker-compose 설정, 긴 URL은 반드시 실제 Lexical 코드 블럭(CodeNode)으로 만들어줘.
+코드 블럭 안의 줄바꿈과 들여쓰기는 유지하고, 각 섹션 사이에는 충분한 문단 간격을 넣어줘.
+문장 전체에 인라인 코드, 글자색, 폰트색을 적용하지 말고, 코드가 아닌 스펙 항목도 일반 문장이나 목록으로 작성해줘.
+`.trim();
+
 export default function MybatisDocumentAiEditDialog({
   documentId,
   title,
@@ -20,7 +28,7 @@ export default function MybatisDocumentAiEditDialog({
   onSaved,
 }: Props) {
   const [content, setContent] = useState(initialContent);
-  const [instruction, setInstruction] = useState("");
+  const [instruction, setInstruction] = useState(DEFAULT_INSTRUCTION);
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -31,8 +39,9 @@ export default function MybatisDocumentAiEditDialog({
     setBusy(true);
     setError("");
     try {
+      const sourceContent = resetLexicalFormatting(content) ?? content;
       const result = await aiEditArchitectureDocument(documentId, {
-        content,
+        content: sourceContent,
         instruction: instruction.trim(),
       });
       const normalizedContent = normalizeLexicalJson(result.content);
@@ -98,7 +107,7 @@ export default function MybatisDocumentAiEditDialog({
                   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") void applyAiEdit();
                 }}
                 className="ui-input min-h-20 min-w-0 flex-1 resize-y bg-surface-raised px-3 py-2 text-sm leading-6"
-                placeholder="예: 초보자가 이해하기 쉽도록 설명을 보완하고, 실행 순서를 번호 목록으로 정리해줘"
+                placeholder="기본 편집 지시를 필요한 경우 수정하세요."
                 disabled={busy || saving}
               />
               <button
