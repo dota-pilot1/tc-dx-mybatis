@@ -12,7 +12,7 @@ type Props = {
   onSaved: () => void;
 };
 
-const DEFAULT_INSTRUCTION = "제목, 파일(없으면 생략), 코드 이런 단위로 나눠서 정리해줘. 내용은 코드 블록으로 처리해서 깔끔하게";
+const DEFAULT_INSTRUCTION = "제목(번호를 붙여 1. 제목 형식으로 작성하고 조금 큰 글씨와 진한 글씨로 표시), 파일(없으면 생략), 코드 이런 단위로 나눠서 정리해줘. 내용은 코드 블록으로 처리해서 깔끔하게";
 
 export default function MybatisDocumentAiEditDialog({
   documentId,

@@ -92,10 +92,16 @@ function promoteDocumentStructure(root: Record<string, unknown>): Record<string,
     const node = child as Record<string, unknown>
     if (node.type === 'paragraph') {
       const text = nodeText(node)
-      if (/^\d+[.)]\s+/.test(text.trim())) {
+      if (/^\d+[.)]\s+/.test(text.trim()) || /^#{1,3}\s+\d+[.)]?\s+/.test(text.trim())) {
         flushCode()
         codeMode = false
-        output.push({ ...node, type: 'heading', tag: 'h2' })
+        const headingText = text.trim().replace(/^#{1,3}\s+/, '')
+        output.push({
+          ...node,
+          type: 'heading',
+          tag: 'h2',
+          children: [{ type: 'text', detail: 0, format: 1, mode: 'normal', style: '', text: headingText, version: 1 }],
+        })
         return
       }
       if (isCodeLikeParagraph(text) || (codeMode && isCodeContinuation(text))) {
