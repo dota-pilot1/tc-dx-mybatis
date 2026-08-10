@@ -243,6 +243,27 @@ export function normalizeLexicalJson(value: string, promoteStructure = true): st
   }
 }
 
+function serializedText(value: unknown): string {
+  if (!value || typeof value !== 'object') return ''
+  const node = value as { text?: unknown; type?: unknown; children?: unknown[] }
+  if (typeof node.text === 'string') return node.text
+  if (!Array.isArray(node.children)) return ''
+  return node.children.map(serializedText).join(node.type === 'root' ? '\n' : '')
+}
+
+export function preservesLexicalContent(source: string, result: string): boolean {
+  try {
+    const sourceText = serializedText(JSON.parse(source)).replace(/\s+/g, ' ').trim()
+    const resultText = serializedText(JSON.parse(result)).replace(/\s+/g, ' ').trim()
+    if (sourceText.length < 80) return resultText.length > 0
+    const hasSourceCode = /\b(public|private|protected|class|interface|SELECT|docker|import)\b/i.test(sourceText)
+    const hasResultCode = /\b(public|private|protected|class|interface|SELECT|docker|import)\b/i.test(resultText)
+    return resultText.length >= Math.min(160, Math.floor(sourceText.length * 0.35)) && (!hasSourceCode || hasResultCode)
+  } catch {
+    return false
+  }
+}
+
 function resetNodeFormatting(node: Record<string, unknown>): Record<string, unknown> {
   const type = node.type
   if (type === 'text' || type === 'code-highlight') {
