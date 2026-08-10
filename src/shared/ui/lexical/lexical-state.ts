@@ -7,15 +7,21 @@ const REGISTERED_NODE_TYPES = new Set([
 function nodeText(node: Record<string, unknown>): string {
   if (typeof node.text === 'string') return node.text
   if (!Array.isArray(node.children)) return ''
-  return node.children.map((child) => child && typeof child === 'object' ? nodeText(child as Record<string, unknown>) : '').join('')
+  return node.children.map((child) => {
+    if (!child || typeof child !== 'object') return ''
+    const childNode = child as Record<string, unknown>
+    return childNode.type === 'linebreak' ? '\n' : nodeText(childNode)
+  }).join('')
 }
 
 function isCodeLikeParagraph(text: string): boolean {
-  const value = text.trim()
-  return /^(docker\s+|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|SELECT\b|INSERT\b|UPDATE\b|DELETE\b)/i.test(value) ||
-    /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build|healthcheck|[A-Z][A-Z0-9_]+):/.test(value) ||
-    /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value) ||
-    /^-\s+/.test(value)
+  return text.split(/\r?\n/).some((line) => {
+    const value = line.trim()
+    return /^(docker\s+|docker-compose|npm |pnpm |yarn |git |curl |ssh |psql |java |\.\/|SELECT\b|INSERT\b|UPDATE\b|DELETE\b)/i.test(value) ||
+      /^(services|postgres|image|container_name|restart|ports|volumes|environment|networks|depends_on|command|build|healthcheck|[A-Z][A-Z0-9_]+):/.test(value) ||
+      /^(docker-compose\.ya?ml|application(-[\w-]+)?\.ya?ml|package\.json|build\.gradle|pom\.xml)$/.test(value) ||
+      /^-\s+/.test(value)
+  })
 }
 
 function isCodeContinuation(text: string): boolean {

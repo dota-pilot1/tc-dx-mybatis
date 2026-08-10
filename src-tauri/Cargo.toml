@@ -1,6 +1,6 @@
 [package]
 name = "tc-dx-mybatis"
-version = "0.1.38"
+version = "0.1.39"
 description = "TC DX MyBatis 개발 플레이북 앱"
 authors = ["you"]
 edition = "2021"
