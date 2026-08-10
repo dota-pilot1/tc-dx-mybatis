@@ -1,10 +1,11 @@
-import { ArrowLeft, CloudCog, FileText, GripVertical } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CloudCog, FileText, GripVertical, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState } from "react";
 import PageHeader from "../../shared/ui/PageHeader";
+import MybatisDocumentAiEditDialog from "./MybatisDocumentAiEditDialog";
 import { DialogActions, DialogFrame } from "../../shared/ui/dialog";
 import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
 import {
@@ -17,12 +18,15 @@ type Props = {
   documentId: string;
   onClose: () => void;
   onNavigate?: (documentId: string) => void;
+  onEdit?: (document: ArchitecturePlaybookDocument) => void;
+  onDelete?: (document: ArchitecturePlaybookDocument) => void;
 };
 
 type DocumentRow = {
   document: ArchitecturePlaybookDocument;
   depth: number;
   indexPath: number[];
+  visible: boolean;
 };
 
 function SortableDocumentRow({
@@ -32,6 +36,11 @@ function SortableDocumentRow({
   active,
   reordering,
   onClick,
+  hasChildren,
+  collapsed,
+  onToggle,
+  childCount,
+  visible,
 }: {
   item: ArchitecturePlaybookDocument;
   depth: number;
@@ -39,27 +48,37 @@ function SortableDocumentRow({
   active: boolean;
   reordering: boolean;
   onClick: () => void;
+  hasChildren: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
+  childCount: number;
+  visible: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   return (
-    <button
+    <div
       ref={setNodeRef}
-      type="button"
-      onClick={onClick}
       {...attributes}
       {...listeners}
       disabled={reordering}
-      className={`flex w-full items-center gap-2 rounded-md p-2.5 text-left transition-colors ${active ? "border-l-2 border-brand-border bg-brand-glass text-brand-primary" : depth > 0 ? "border-l-2 border-brand-border/40 bg-surface-raised text-text-secondary" : "bg-surface-muted text-text-primary hover:bg-brand-glass"} ${isDragging ? "z-10 opacity-60 shadow-lg ring-2 ring-brand-border/40" : ""}`}
-      style={{ transform: CSS.Transform.toString(transform), transition, paddingLeft: `${10 + depth * 28}px` }}
+      aria-hidden={!visible}
+      className={`flex min-h-0 w-full items-center gap-2 overflow-hidden rounded-md text-left transition-[height,opacity,transform,padding] duration-200 ease-out ${visible ? "h-12 translate-y-0 p-2.5 opacity-100" : "!m-0 pointer-events-none h-0 -translate-y-1 p-0 opacity-0"} ${active ? "border-l-2 border-brand-border bg-brand-glass text-brand-primary" : depth > 0 ? "border-l-2 border-brand-border/40 bg-surface-raised text-text-secondary" : "bg-surface-muted text-text-primary hover:bg-brand-glass"} ${isDragging ? "z-10 opacity-60 shadow-lg ring-2 ring-brand-border/40" : ""}`}
+      style={{ transform: CSS.Transform.toString(transform), transition: isDragging || transform ? transition : undefined, paddingLeft: `${10 + depth * 28}px` }}
     >
       <GripVertical className="size-3.5 shrink-0 cursor-grab text-text-muted active:cursor-grabbing" aria-hidden="true" />
       <FileText className={`size-3.5 shrink-0 ${active ? "text-brand-primary" : "text-text-muted"}`} />
-      <span className="flex min-w-0 items-center gap-2">
+      <button type="button" onClick={onClick} disabled={reordering} className="flex min-w-0 flex-1 items-center gap-2 text-left">
         <span className={`${depth > 0 ? "h-5 min-w-5 px-1 text-[10px]" : "h-6 min-w-6 px-1.5 text-[11px]"} inline-flex shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised font-black text-text-muted`}>{indexPath.join(".")}</span>
         {depth > 0 && <span className="shrink-0 text-xs font-bold text-brand-primary/75">ㄴ</span>}
         <span className={`${depth > 0 ? "text-[13px] font-bold text-text-secondary" : "text-sm font-black text-text-primary"} truncate`}>{item.title}</span>
-      </span>
-    </button>
+      </button>
+      {hasChildren && <>
+        <span className="shrink-0 rounded-md bg-surface-raised px-1.5 py-1 text-[10px] font-black text-text-muted">{childCount}개</span>
+        <button type="button" onClick={(event) => { event.stopPropagation(); onToggle(); }} disabled={reordering} className="grid size-6 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-raised hover:text-brand-primary" title={collapsed ? "하위 문서 펼치기" : "하위 문서 접기"} aria-label={collapsed ? "하위 문서 펼치기" : "하위 문서 접기"}>
+          {collapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+        </button>
+      </>}
+    </div>
   );
 }
 
@@ -76,7 +95,7 @@ function findDocument(
   return null;
 }
 
-function flattenDocumentRows(documents: ArchitecturePlaybookDocument[]) {
+function flattenDocumentRows(documents: ArchitecturePlaybookDocument[], collapsedIds: Set<string>) {
   const children = new Map<string, ArchitecturePlaybookDocument[]>();
   const roots: ArchitecturePlaybookDocument[] = [];
 
@@ -91,11 +110,11 @@ function flattenDocumentRows(documents: ArchitecturePlaybookDocument[]) {
   }
 
   const rows: DocumentRow[] = [];
-  function visit(items: ArchitecturePlaybookDocument[], depth: number, parentPath: number[] = []) {
+  function visit(items: ArchitecturePlaybookDocument[], depth: number, parentPath: number[] = [], visible = true) {
     items.forEach((document, index) => {
       const indexPath = [...parentPath, index + 1];
-      rows.push({ document, depth, indexPath });
-      visit(children.get(document.id) ?? [], depth + 1, indexPath);
+      rows.push({ document, depth, indexPath, visible });
+      visit(children.get(document.id) ?? [], depth + 1, indexPath, visible && !collapsedIds.has(document.id));
     });
   }
 
@@ -103,7 +122,15 @@ function flattenDocumentRows(documents: ArchitecturePlaybookDocument[]) {
   return rows;
 }
 
-export default function MybatisDocumentPage({ documentId, onClose, onNavigate }: Props) {
+function getCollapsibleDocumentIds(documents: ArchitecturePlaybookDocument[]) {
+  const parentIds = new Set<string>();
+  documents.forEach((document) => {
+    if (document.parentId) parentIds.add(document.parentId);
+  });
+  return parentIds;
+}
+
+export default function MybatisDocumentPage({ documentId, onClose, onNavigate, onEdit, onDelete }: Props) {
   const [result, setResult] = useState<ReturnType<typeof findDocument>>(null);
   const [categories, setCategories] = useState<Awaited<ReturnType<typeof listArchitecturePlaybook>>>([]);
   const [loading, setLoading] = useState(true);
@@ -112,6 +139,8 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedTopicId, setSelectedTopicId] = useState("");
   const [reordering, setReordering] = useState(false);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [aiEditOpen, setAiEditOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   async function load() {
@@ -144,8 +173,12 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
     void load();
   }, [documentId]);
 
+  useEffect(() => {
+    if (result) setCollapsedIds(getCollapsibleDocumentIds(result.topic.documents));
+  }, [result?.topic.id]);
+
   const document = result?.document as ArchitecturePlaybookDocument | undefined;
-  const documentRows = result ? flattenDocumentRows(result.topic.documents) : [];
+  const documentRows = result ? flattenDocumentRows(result.topic.documents, collapsedIds) : [];
   const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
 
   function openBreadcrumbDialog() {
@@ -159,6 +192,15 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
     const nextDocument = topic?.documents.find((item) => !item.parentId) ?? topic?.documents[0];
     setBreadcrumbOpen(false);
     if (nextDocument) onNavigate?.(nextDocument.id);
+  }
+
+  function toggleCollapsed(documentId: string) {
+    setCollapsedIds((current) => {
+      const next = new Set(current);
+      if (next.has(documentId)) next.delete(documentId);
+      else next.add(documentId);
+      return next;
+    });
   }
 
   async function reorderDocuments(fromId: string, toId: string) {
@@ -206,7 +248,7 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
         <span className="text-[14px] font-bold tracking-tight text-text-primary">MyBatis Playbook</span>
         <span className="ml-1 text-[12px] font-semibold text-text-muted">문서 페이지</span>
       </PageHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted p-3 md:p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted p-2 md:p-3">
         <main className="mx-auto grid w-full max-w-[1800px] gap-3 lg:grid-cols-[520px_minmax(0,1fr)]">
           {loading ? (
             <div className="grid min-h-[520px] place-items-center rounded-xl border border-surface-border bg-surface-raised text-sm font-semibold text-text-muted lg:col-span-2">문서를 불러오는 중입니다.</div>
@@ -219,7 +261,7 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
                 <span className="text-text-muted">&gt;</span>
                 <span className="truncate">{result.topic.title}</span>
               </button>
-              <aside className="h-fit rounded-xl border border-surface-border bg-surface-raised p-2.5 shadow-sm lg:sticky lg:top-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+              <aside className="h-fit rounded-xl border border-surface-border bg-surface-raised p-2.5 shadow-sm lg:sticky lg:top-0 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
                 <div className="border-b border-surface-border-soft px-2 pb-2.5">
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <h2 className="truncate text-sm font-black text-text-primary">문서 목록</h2>
@@ -234,10 +276,11 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
                 </div>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDocumentDragEnd}>
                   <SortableContext items={documentRows.map(({ document: item }) => item.id)} strategy={verticalListSortingStrategy}>
-                    <div className="mt-1.5 space-y-0.5" role="list">
-                      {documentRows.map(({ document: item, depth, indexPath }) => (
-                        <SortableDocumentRow key={item.id} item={item} depth={depth} indexPath={indexPath} active={item.id === document.id} reordering={reordering} onClick={() => onNavigate?.(item.id)} />
-                      ))}
+                    <div className="mt-2 space-y-1" role="list">
+                      {documentRows.map(({ document: item, depth, indexPath, visible }) => {
+                        const childCount = result.topic.documents.filter((candidate) => candidate.parentId === item.id).length;
+                        return <SortableDocumentRow key={item.id} item={item} depth={depth} indexPath={indexPath} active={item.id === document.id} reordering={reordering} onClick={() => onNavigate?.(item.id)} hasChildren={childCount > 0} childCount={childCount} collapsed={collapsedIds.has(item.id)} onToggle={() => toggleCollapsed(item.id)} visible={visible} />;
+                      })}
                     </div>
                   </SortableContext>
                 </DndContext>
@@ -245,12 +288,30 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
 
               <section className="min-w-0">
                 <article className="overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-sm">
-                  <header className="border-b border-surface-border px-5 py-5">
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-brand-primary">{result.category.title} &gt; {result.topic.title}</p>
-                    <h1 className="mt-2 text-2xl font-black tracking-tight text-text-primary">{document.title}</h1>
-                    <p className="mt-2 text-[11px] font-semibold text-text-muted">최종 수정 {new Date(document.updatedAt).toLocaleString("ko-KR")}</p>
+                  <header className="border-b border-surface-border px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-brand-primary">{result.category.title} &gt; {result.topic.title}</p>
+                        <h1 className="mt-2 text-2xl font-black tracking-tight text-text-primary">{document.title}</h1>
+                        <p className="mt-2 text-[11px] font-semibold text-text-muted">최종 수정 {new Date(document.updatedAt).toLocaleString("ko-KR")}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button type="button" onClick={() => onEdit?.(document)} className="ui-icon-button-brand h-8 w-8" title="문서 수정" aria-label="문서 수정">
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button type="button" onClick={() => onDelete?.(document)} className="ui-icon-button h-8 w-8 text-[var(--destructive)]" title="문서 삭제" aria-label="문서 삭제">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                        <button type="button" onClick={() => setAiEditOpen(true)} className="ui-icon-button-brand h-8 w-8" title="AI로 문서 편집" aria-label="AI로 문서 편집">
+                          <Sparkles className="size-3.5" />
+                        </button>
+                        <button type="button" onClick={() => void load()} className="ui-icon-button h-8 w-8" title="문서 새로고침" aria-label="문서 새로고침">
+                          <RefreshCw className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </header>
-                  <div className="p-5">
+                  <div className="p-4">
                     <LexicalEditor key={document.id} initialState={document.content} onChange={() => undefined} readOnly minHeight="560px" />
                   </div>
                 </article>
@@ -292,6 +353,19 @@ export default function MybatisDocumentPage({ documentId, onClose, onNavigate }:
           </div>
           <DialogActions busy={false} deleting={false} onClose={() => setBreadcrumbOpen(false)} onSave={selectBreadcrumb} />
         </DialogFrame>
+      )}
+      {aiEditOpen && document && (
+        <MybatisDocumentAiEditDialog
+          documentId={document.id}
+          title={document.title}
+          initialContent={document.content}
+          onClose={() => setAiEditOpen(false)}
+          onSaved={() => {
+            setAiEditOpen(false);
+            setCategories([]);
+            void load();
+          }}
+        />
       )}
     </div>
   );
