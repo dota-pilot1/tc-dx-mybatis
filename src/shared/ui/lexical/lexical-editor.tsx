@@ -480,6 +480,22 @@ function normalizedNode(value: unknown, parentType: string): Record<string, unkn
     const children = source.children
       .map((child) => normalizedNode(child, type!))
       .filter((child): child is Record<string, unknown> => Boolean(child))
+    if (type === 'paragraph' && children.length > 0) {
+      const textChildren = children.filter((child) => child.type === 'text')
+      const text = textChildren.map((child) => String(child.text ?? '')).join('')
+      const allInlineCode = textChildren.length === children.length &&
+        textChildren.every((child) => typeof child.format === 'number' && (child.format & 16) === 16)
+      const looksLikeLongCode = text.length >= 24 || /^(https?:\/\/|ssh |curl |npm |pnpm |docker |git )/.test(text)
+      if (allInlineCode && looksLikeLongCode) {
+        return {
+          type: 'code', language: 'plaintext', theme: null, direction: null,
+          format: '', indent: 0, version: 1,
+          children: textChildren.map((child) => ({
+            ...child, type: 'code-highlight', format: 0,
+          })),
+        }
+      }
+    }
     return { ...source, type, children }
   }
   return { ...source, type, children: [] }
