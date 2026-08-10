@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CloudCog, ExternalLink, Link as LinkIcon, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, CloudCog, ExternalLink, Link as LinkIcon, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import PageHeader from "../../shared/ui/PageHeader";
 import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
@@ -10,6 +10,8 @@ import {
 type Props = {
   documentId: string;
   onClose: () => void;
+  onEdit: (document: ArchitecturePlaybookDocument) => void;
+  onDelete: (document: ArchitecturePlaybookDocument) => void;
 };
 
 function findDocument(
@@ -25,7 +27,7 @@ function findDocument(
   return null;
 }
 
-export default function MybatisDocumentPage({ documentId, onClose }: Props) {
+export default function MybatisDocumentPage({ documentId, onClose, onEdit, onDelete }: Props) {
   const [result, setResult] = useState<ReturnType<typeof findDocument>>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -73,6 +75,12 @@ export default function MybatisDocumentPage({ documentId, onClose }: Props) {
             </button>
             {document && (
               <div className="flex items-center gap-1.5">
+                <button type="button" onClick={() => onEdit(document)} className="ui-icon-button-brand h-8 w-8" title="문서 수정" aria-label="문서 수정">
+                  <Pencil className="size-3.5" />
+                </button>
+                <button type="button" onClick={() => onDelete(document)} className="ui-icon-button h-8 w-8 text-[var(--destructive)]" title="문서 삭제" aria-label="문서 삭제">
+                  <Trash2 className="size-3.5" />
+                </button>
                 <button type="button" onClick={() => void copyPageLink()} className="ui-icon-button h-8 w-8" title={copied ? "링크 복사됨" : "페이지 링크 복사"} aria-label={copied ? "링크 복사됨" : "페이지 링크 복사"}>
                   {copied ? <Check className="size-3.5 text-brand-primary" /> : <LinkIcon className="size-3.5" />}
                 </button>

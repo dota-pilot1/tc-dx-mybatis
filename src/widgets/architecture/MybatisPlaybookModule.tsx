@@ -246,7 +246,20 @@ function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocu
   }, []);
 
   if (pageDocumentId && onCloseDocumentPage) {
-    return <MybatisDocumentPage documentId={pageDocumentId} onClose={onCloseDocumentPage} />;
+    return (
+      <MybatisDocumentPage
+        documentId={pageDocumentId}
+        onClose={onCloseDocumentPage}
+        onEdit={(target) => {
+          onCloseDocumentPage();
+          openDocumentDialog({ mode: "edit", target });
+        }}
+        onDelete={(target) => {
+          onCloseDocumentPage();
+          openDocumentDialog({ mode: "delete", target });
+        }}
+      />
+    );
   }
 
   function openDeleteTitleDialog(
