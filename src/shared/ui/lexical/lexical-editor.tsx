@@ -443,6 +443,61 @@ function isValidLexicalNode(value: unknown): boolean {
   return !('children' in node) || (Array.isArray(node.children) && node.children.every(isValidLexicalNode))
 }
 
+function normalizedNode(value: unknown, parentType: string): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object') return null
+  const source = value as { type?: unknown; text?: unknown; children?: unknown[]; [key: string]: unknown }
+  let type = typeof source.type === 'string' && REGISTERED_NODE_TYPES.has(source.type)
+    ? source.type
+    : undefined
+
+  if (!type && typeof source.text === 'string') {
+    if (parentType === 'code') type = 'code-highlight'
+    else if (parentType === 'root') type = 'paragraph'
+    else type = 'text'
+  }
+  if (!type && Array.isArray(source.children)) type = parentType === 'root' ? 'paragraph' : 'paragraph'
+  if (!type) return null
+
+  if (type === 'paragraph' && !Array.isArray(source.children) && typeof source.text === 'string') {
+    return {
+      type: 'paragraph', direction: null, format: '', indent: 0, version: 1,
+      children: [{ type: 'text', detail: 0, format: 0, mode: 'normal', style: '', text: source.text, version: 1 }],
+    }
+  }
+  if (type === 'text' || type === 'code-highlight') {
+    return {
+      ...source,
+      type,
+      text: typeof source.text === 'string' ? source.text : '',
+      detail: typeof source.detail === 'number' ? source.detail : 0,
+      format: typeof source.format === 'number' ? source.format : 0,
+      mode: typeof source.mode === 'string' ? source.mode : 'normal',
+      style: typeof source.style === 'string' ? source.style : '',
+      version: typeof source.version === 'number' ? source.version : 1,
+    }
+  }
+  if (Array.isArray(source.children)) {
+    const children = source.children
+      .map((child) => normalizedNode(child, type!))
+      .filter((child): child is Record<string, unknown> => Boolean(child))
+    return { ...source, type, children }
+  }
+  return { ...source, type, children: [] }
+}
+
+export function normalizeLexicalJson(value: string): string | null {
+  try {
+    const parsed = JSON.parse(value) as { root?: unknown }
+    if (!parsed.root || typeof parsed.root !== 'object') return null
+    const rootSource = parsed.root as Record<string, unknown>
+    const root = normalizedNode({ ...rootSource, type: 'root' }, 'root')
+    if (!root || !Array.isArray(root.children)) return null
+    return JSON.stringify({ ...parsed, root })
+  } catch {
+    return null
+  }
+}
+
 export function isSupportedLexicalJson(value: string): boolean {
   try {
     const parsed = JSON.parse(value)
@@ -482,7 +537,7 @@ export function LexicalEditor({
       theme: editorTheme,
       editable: !readOnly,
       editorState:
-        initialState && isSupportedLexicalJson(initialState) ? initialState : undefined,
+        initialState ? normalizeLexicalJson(initialState) ?? undefined : undefined,
       nodes: [
         HeadingNode,
         QuoteNode,
