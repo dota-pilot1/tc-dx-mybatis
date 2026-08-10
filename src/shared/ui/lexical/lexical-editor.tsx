@@ -14,7 +14,7 @@ import { TablePlugin } from '@lexical/react/LexicalTablePlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin'
 import { ORDERED_LIST, TRANSFORMERS } from '@lexical/markdown'
-import { CodeNode, CodeHighlightNode, registerCodeHighlighting } from '@lexical/code'
+import { $createCodeNode, CodeNode, CodeHighlightNode, registerCodeHighlighting } from '@lexical/code'
 import { HeadingNode, QuoteNode } from '@lexical/rich-text'
 import { $isListItemNode, $isListNode, ListNode, ListItemNode } from '@lexical/list'
 import { LinkNode } from '@lexical/link'
@@ -22,12 +22,14 @@ import { TableNode, TableCellNode, TableRowNode } from '@lexical/table'
 import {
   $createParagraphNode,
   $createTextNode,
+  $insertNodes,
   $getRoot,
   $getSelection,
   $isElementNode,
   $isRangeSelection,
   COMMAND_PRIORITY_HIGH,
   KEY_BACKSPACE_COMMAND,
+  PASTE_COMMAND,
   type EditorState,
   type LexicalNode,
 } from 'lexical'
@@ -300,6 +302,57 @@ function CodeBlockBackspacePlugin() {
   return null
 }
 
+function MarkdownCodePastePlugin() {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(
+    () =>
+      editor.registerCommand(
+        PASTE_COMMAND,
+        (event) => {
+          const markdown = event.clipboardData?.getData('text/plain') ?? ''
+          if (!/```[^\n`]*\n[\s\S]*?```/.test(markdown)) return false
+
+          event.preventDefault()
+          const nodes: LexicalNode[] = []
+          let cursor = 0
+          const fence = /```([^\n`]*)\n([\s\S]*?)```/g
+          let match: RegExpExecArray | null
+
+          const appendText = (value: string) => {
+            value
+              .split(/\r?\n/)
+              .map((line) => line.trimEnd())
+              .filter((line, index, lines) => line.length > 0 || index < lines.length - 1)
+              .forEach((line) => {
+                const paragraph = $createParagraphNode()
+                if (line) paragraph.append($createTextNode(line))
+                nodes.push(paragraph)
+              })
+          }
+
+          while ((match = fence.exec(markdown))) {
+            appendText(markdown.slice(cursor, match.index))
+            const code = $createCodeNode(match[1].trim() || undefined)
+            code.append($createTextNode(match[2].replace(/\r\n/g, '\n').replace(/\n$/, '')))
+            nodes.push(code)
+            cursor = match.index + match[0].length
+          }
+          appendText(markdown.slice(cursor))
+
+          editor.update(() => {
+            $insertNodes(nodes)
+          })
+          return true
+        },
+        COMMAND_PRIORITY_HIGH,
+      ),
+    [editor],
+  )
+
+  return null
+}
+
 function MermaidCodeNodeTransformPlugin() {
   const [editor] = useLexicalComposerContext()
 
@@ -483,6 +536,7 @@ export function LexicalEditor({
         <CodeHighlightPlugin />
         <CodeCopyButtonPlugin />
         {!readOnly ? <CodeBlockBackspacePlugin /> : null}
+        {!readOnly ? <MarkdownCodePastePlugin /> : null}
         <MermaidCodeNodeTransformPlugin />
         {!readOnly ? <OrderedListBackspacePlugin /> : null}
         {readOnly ? null : <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />}
