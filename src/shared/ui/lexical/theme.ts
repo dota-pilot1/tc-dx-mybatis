@@ -33,7 +33,7 @@ export const editorTheme: EditorThemeClasses = {
   tableCell: 'border border-surface-border px-3 py-2 text-sm text-text-primary align-top min-w-[80px]',
   tableCellHeader: 'border border-surface-border px-3 py-2 text-sm font-semibold text-text-primary align-top',
   tableScrollableWrapper: 'overflow-x-auto my-3',
-  code: 'block bg-surface-muted text-text-primary font-mono text-sm p-3 rounded-lg my-2 overflow-x-auto whitespace-pre border border-surface-border-soft',
+  code: 'block bg-surface-muted text-text-primary font-mono text-sm p-3 rounded-lg my-2 whitespace-pre-wrap break-words border border-surface-border-soft [overflow-wrap:anywhere]',
   codeHighlight: {
     atrule: 'text-brand-primary',
     attr: 'text-text-primary',
