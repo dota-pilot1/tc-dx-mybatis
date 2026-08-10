@@ -1,7 +1,7 @@
-import { Sparkles, X } from "lucide-react";
+import { Eraser, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { aiEditArchitectureDocument, updateArchitectureDocument } from "../../features/mybatis-playbook/api";
-import { LexicalEditor, normalizeLexicalJson } from "../../shared/ui/lexical/lexical-editor";
+import { LexicalEditor, normalizeLexicalJson, resetLexicalFormatting } from "../../shared/ui/lexical/lexical-editor";
 
 type Props = {
   documentId: string;
@@ -60,6 +60,14 @@ export default function MybatisDocumentAiEditDialog({
     }
   }
 
+  function resetFormatting() {
+    const reset = resetLexicalFormatting(content);
+    if (!reset) return;
+    setContent(reset);
+    setRevision((current) => current + 1);
+    setError("");
+  }
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[color-mix(in_srgb,var(--background)_72%,transparent)] p-4">
       <div className="flex max-h-[min(900px,calc(100vh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-2xl">
@@ -106,7 +114,12 @@ export default function MybatisDocumentAiEditDialog({
           </section>
 
           <section className="mt-4 overflow-hidden rounded-lg border border-surface-border-soft">
-            <div className="border-b border-surface-border-soft bg-surface-muted px-4 py-2 text-xs font-black text-text-secondary">편집 결과 검토</div>
+            <div className="flex items-center justify-between gap-3 border-b border-surface-border-soft bg-surface-muted px-4 py-2">
+              <span className="text-xs font-black text-text-secondary">편집 결과 검토</span>
+              <button type="button" onClick={resetFormatting} disabled={busy || saving} className="inline-flex items-center gap-1 rounded-md border border-surface-border-soft px-2 py-1 text-[11px] font-black text-text-secondary hover:bg-surface-raised disabled:opacity-40" title="내용은 유지하고 서식만 초기화">
+                <Eraser className="size-3.5" />서식 초기화
+              </button>
+            </div>
             <LexicalEditor
               key={`${documentId}-${revision}`}
               initialState={content}

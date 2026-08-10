@@ -514,6 +514,37 @@ export function normalizeLexicalJson(value: string): string | null {
   }
 }
 
+function resetNodeFormatting(node: Record<string, unknown>): Record<string, unknown> {
+  const type = node.type
+  if (type === 'text' || type === 'code-highlight') {
+    return { ...node, type: 'text', detail: 0, format: 0, mode: 'normal', style: '' }
+  }
+  if (type === 'code') {
+    const text = Array.isArray(node.children)
+      ? node.children.map((child) => (child && typeof child === 'object' ? String((child as Record<string, unknown>).text ?? '') : '')).join('')
+      : ''
+    return {
+      type: 'paragraph', direction: null, format: '', indent: 0, version: 1,
+      children: [{ type: 'text', detail: 0, format: 0, mode: 'normal', style: '', text, version: 1 }],
+    }
+  }
+  const children = Array.isArray(node.children)
+    ? node.children.map((child) => child && typeof child === 'object' ? resetNodeFormatting(child as Record<string, unknown>) : child).filter(Boolean)
+    : node.children
+  return { ...node, children, format: type === 'root' ? node.format : '', indent: 0, direction: node.direction ?? null }
+}
+
+export function resetLexicalFormatting(value: string): string | null {
+  const normalized = normalizeLexicalJson(value)
+  if (!normalized) return null
+  try {
+    const parsed = JSON.parse(normalized) as { root: Record<string, unknown> }
+    return JSON.stringify({ ...parsed, root: resetNodeFormatting(parsed.root) })
+  } catch {
+    return null
+  }
+}
+
 export function isSupportedLexicalJson(value: string): boolean {
   try {
     const parsed = JSON.parse(value)
