@@ -430,10 +430,23 @@ function EditablePlugin({ readOnly }: { readOnly: boolean }) {
   return null
 }
 
-function isValidLexicalJson(value: string): boolean {
+const REGISTERED_NODE_TYPES = new Set([
+  'root', 'paragraph', 'text', 'linebreak', 'heading', 'quote', 'list', 'listitem',
+  'code', 'code-highlight', 'link', 'autolink', 'horizontalrule', 'table', 'tablerow',
+  'tablecell', 'image', 'youtube', 'mermaid',
+])
+
+function isValidLexicalNode(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false
+  const node = value as { type?: unknown; children?: unknown }
+  if (typeof node.type !== 'string' || !REGISTERED_NODE_TYPES.has(node.type)) return false
+  return !('children' in node) || (Array.isArray(node.children) && node.children.every(isValidLexicalNode))
+}
+
+export function isSupportedLexicalJson(value: string): boolean {
   try {
     const parsed = JSON.parse(value)
-    return Boolean(parsed?.root)
+    return Boolean(parsed?.root && isValidLexicalNode(parsed.root))
   } catch {
     return false
   }
@@ -469,7 +482,7 @@ export function LexicalEditor({
       theme: editorTheme,
       editable: !readOnly,
       editorState:
-        initialState && isValidLexicalJson(initialState) ? initialState : undefined,
+        initialState && isSupportedLexicalJson(initialState) ? initialState : undefined,
       nodes: [
         HeadingNode,
         QuoteNode,

@@ -1,7 +1,7 @@
 import { Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { aiEditArchitectureDocument, updateArchitectureDocument } from "../../features/mybatis-playbook/api";
-import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
+import { isSupportedLexicalJson, LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
 
 type Props = {
   documentId: string;
@@ -34,6 +34,9 @@ export default function MybatisDocumentAiEditDialog({
         content,
         instruction: instruction.trim(),
       });
+      if (!isSupportedLexicalJson(result.content)) {
+        throw new Error("AI가 올바른 Lexical 문서 형식으로 결과를 만들지 못했습니다. 요구사항을 조금 더 구체적으로 입력해 주세요.");
+      }
       setContent(result.content);
       setRevision((current) => current + 1);
     } catch (reason) {
