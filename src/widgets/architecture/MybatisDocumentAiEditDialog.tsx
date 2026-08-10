@@ -32,11 +32,13 @@ export default function MybatisDocumentAiEditDialog({
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function applyAiEdit() {
     if (!instruction.trim() || busy || saving) return;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const sourceContent = resetLexicalFormatting(content) ?? content;
       const result = await aiEditArchitectureDocument(documentId, {
@@ -52,7 +54,7 @@ export default function MybatisDocumentAiEditDialog({
         setContent(fallbackContent);
         setFormattingReset(false);
         setRevision((current) => current + 1);
-        setError("AI 결과에서 코드 내용이 누락되어 원문을 유지했습니다. 같은 요청을 다시 시도해 주세요.");
+        setNotice("AI 결과가 불완전해 원문을 유지하고 요청한 서식만 적용했습니다.");
         return;
       }
       setContent(normalizedContent);
@@ -68,6 +70,7 @@ export default function MybatisDocumentAiEditDialog({
   async function save() {
     setSaving(true);
     setError("");
+    setNotice("");
     try {
       await updateArchitectureDocument(documentId, { content });
       onSaved();
@@ -85,6 +88,7 @@ export default function MybatisDocumentAiEditDialog({
     setFormattingReset(true);
     setRevision((current) => current + 1);
     setError("");
+    setNotice("");
   }
 
   return (
@@ -154,6 +158,7 @@ export default function MybatisDocumentAiEditDialog({
               </button>
             </div>
             {error && <p className="mt-2 whitespace-pre-wrap text-xs font-bold text-[var(--destructive)]">{error}</p>}
+            {notice && <p className="mt-2 whitespace-pre-wrap text-xs font-bold text-brand-primary">{notice}</p>}
           </section>
 
           <section className="mt-4 overflow-hidden rounded-lg border border-surface-border-soft">
