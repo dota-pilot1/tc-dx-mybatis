@@ -250,14 +250,7 @@ function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocu
       <MybatisDocumentPage
         documentId={pageDocumentId}
         onClose={onCloseDocumentPage}
-        onEdit={(target) => {
-          onCloseDocumentPage();
-          openDocumentDialog({ mode: "edit", target });
-        }}
-        onDelete={(target) => {
-          onCloseDocumentPage();
-          openDocumentDialog({ mode: "delete", target });
-        }}
+        onNavigate={onOpenDocumentPage}
       />
     );
   }

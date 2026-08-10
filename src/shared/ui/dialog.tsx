@@ -5,12 +5,13 @@ import { cn } from "../lib/utils";
 // 위젯마다 복사돼 있던 DialogFrame / Actions / DangerNotice 공통본.
 // 톤 색상은 헤더에서 한 번만 쓰고, 본문은 색을 얹지 않는다.
 
-export type DialogSize = "sm" | "md" | "wide";
+export type DialogSize = "sm" | "md" | "lg" | "wide";
 export type DialogTone = "default" | "danger";
 
 const sizeClass: Record<DialogSize, string> = {
   sm: "max-w-lg",
   md: "max-w-3xl",
+  lg: "max-w-4xl h-[80vh]",
   wide: "max-w-6xl",
 };
 
@@ -104,7 +105,7 @@ export function DialogFrame({
             <X className="size-4" />
           </button>
         </div>
-        <div className={cn("min-h-0 px-5 pb-5 pt-4", contentClassName)}>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4", contentClassName)}>
           {children}
         </div>
       </div>
