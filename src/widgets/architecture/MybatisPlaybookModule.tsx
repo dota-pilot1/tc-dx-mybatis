@@ -24,8 +24,6 @@ import {
   GripVertical,
   Pencil,
   Plus,
-  PanelRightOpen,
-  RefreshCw,
   Trash2,
   X,
 } from "lucide-react";
@@ -158,7 +156,6 @@ function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocu
   );
   const [inlineTitle, setInlineTitle] = useState({ category: "", topic: "" });
   const [busy, setBusy] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [categoryWidth, setCategoryWidth] = useState(() =>
     readStoredWidth(CATEGORY_WIDTH_KEY, 400, 300, 560),
@@ -247,13 +244,45 @@ function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocu
 
   if (pageDocumentId && onCloseDocumentPage) {
     return (
-      <MybatisDocumentPage
-        documentId={pageDocumentId}
-        onClose={onCloseDocumentPage}
-        onNavigate={onOpenDocumentPage}
-        onEdit={(document) => openDocumentDialog({ mode: "edit", target: document })}
-        onDelete={(document) => openDocumentDialog({ mode: "delete", target: document })}
-      />
+      <>
+        <MybatisDocumentPage
+          documentId={pageDocumentId}
+          onClose={onCloseDocumentPage}
+          onNavigate={onOpenDocumentPage}
+          onEdit={(document) =>
+            openDocumentDialog({ mode: "edit", target: document })
+          }
+          onDelete={(document) =>
+            openDocumentDialog({ mode: "delete", target: document })
+          }
+        />
+
+        {/*
+         * BEFORE:
+         * MybatisDocumentPage만 반환해서 아래쪽의 DocumentDialog 렌더링에
+         * 도달하지 못했다. 따라서 상세 페이지의 수정 버튼을 눌러도
+         * documentDialog 상태만 바뀌고 화면에는 다이얼로그가 나타나지 않았다.
+         *
+         * AFTER:
+         * 상세 페이지 반환 경로에서도 DocumentDialog를 함께 렌더링한다.
+         */}
+        {documentDialog && (
+          <DocumentDialog
+            state={documentDialog}
+            title={title}
+            body={body}
+            busy={busy}
+            onTitle={setTitle}
+            onBody={setBody}
+            onClose={() => setDocumentDialog(null)}
+            onSave={
+              documentDialog.mode === "delete"
+                ? deleteDocumentDialog
+                : saveDocumentDialog
+            }
+          />
+        )}
+      </>
     );
   }
 
@@ -471,12 +500,6 @@ function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocu
     void saveDocumentOrder(arrayMove(siblings, from, to), parentId);
   }
 
-  function handleAppRefresh() {
-    if (isRefreshing) return;
-    setIsRefreshing(true);
-    window.setTimeout(() => window.location.reload(), 520);
-  }
-
   const layoutStyle = {
     "--architecture-category-width": `${categoryWidth}px`,
     "--architecture-topic-width": `${topicWidth}px`,
@@ -495,18 +518,6 @@ function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocu
           title="사용 방법"
         >
           <CircleHelp className="size-4" />
-        </button>
-        <button
-          type="button"
-          onClick={handleAppRefresh}
-          disabled={isRefreshing}
-          className="ui-icon-button h-7 w-7"
-          title="앱 새로고침"
-          aria-label="앱 새로고침"
-        >
-          <RefreshCw
-            className={`size-4 ${isRefreshing ? "animate-[spin_520ms_ease-in-out]" : ""}`}
-          />
         </button>
       </PageHeader>
       <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted p-5">
@@ -655,7 +666,7 @@ function MybatisPlaybookModule({ pageDocumentId, onOpenDocumentPage, onCloseDocu
                                   busy={busy}
                                   onRowClick={() => {
                                     setDocumentId(item.id);
-                                    setDetail(null);
+                                    setDetail(item);
                                   }}
                                   onOpen={() => {
                                     setDocumentId(item.id);
@@ -1085,9 +1096,9 @@ function InlineTitleRow({
           {dragHandle}
           {onOpen ? (
             <div
-              className="flex min-w-0 flex-1 items-center gap-2 p-1"
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 p-1"
               onDoubleClick={handleDoubleClick}
-              title={onDoubleClick ? "더블클릭하여 문서 열기" : "제목을 더블클릭하여 수정"}
+              title="클릭하여 빠른 보기"
             >
               {indexLabel !== undefined && (
                 <span
@@ -1207,9 +1218,6 @@ function InlineTitleRow({
           )}
           {onOpen && (
             <div className="flex shrink-0 items-center gap-1">
-              <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(); }} disabled={busy} className="ui-icon-button-brand h-8 w-8" title="드로워로 열기" aria-label="드로워로 열기">
-                <PanelRightOpen className="size-3.5" />
-              </button>
               {onOpenPage && <button type="button" onClick={(event) => { event.stopPropagation(); onOpenPage(); }} disabled={busy} className="ui-icon-button h-8 w-8" title="페이지로 열기" aria-label="페이지로 열기">
                 <ExternalLink className="size-3.5" />
               </button>}
